@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1055780860699",
+    "project_id": "arxplorer-17ddc",
+    "storage_bucket": "arxplorer-17ddc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1055780860699:android:082e9271af15d6286519be",
+        "android_client_info": {
+          "package_name": "com.lakshay.arxplorer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAt-ZpsVvGoSv-Xu6AhOJsosTfhSrJc6QE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
