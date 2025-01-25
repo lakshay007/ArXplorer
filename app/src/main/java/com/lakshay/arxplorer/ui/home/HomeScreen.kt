@@ -48,12 +48,15 @@ fun HomeScreen(
     }
 
 
-    val lightPurple = Color(0xFFF3E5F5)
-    val mediumPurple = Color(0xFFE1BEE7)
-    val darkPurple = Color(0xFFCE93D8)
+    val deepPurple = Color(0xFF4A148C) // Primary color
+    val lightPurple = Color(0xFFF3E5F5) // Surface color
+    val mediumPurple = Color(0xFFE1BEE7) // Surface variant
+    val darkPurple = Color(0xFF6A1B9A) // Secondary color
 
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .background(lightPurple)
     ) {
         // Top section with gradient background
         Column(
@@ -62,8 +65,8 @@ fun HomeScreen(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            lightPurple,
                             mediumPurple,
+                            mediumPurple.copy(alpha = 0.7f),
                             lightPurple
                         )
                     )
@@ -73,9 +76,7 @@ fun HomeScreen(
         ) {
             // Greeting and notifications row
             Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -83,13 +84,13 @@ fun HomeScreen(
                     Text(
                         text = greeting,
                         fontSize = 16.sp,
-                        color = Color(0xFF6A1B9A).copy(alpha = 0.7f)
+                        color = darkPurple.copy(alpha = 0.7f)
                     )
                     Text(
                         text = username,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4A148C)
+                        color = deepPurple
                     )
                 }
                 IconButton(
@@ -102,7 +103,7 @@ fun HomeScreen(
                     Icon(
                         imageVector = Icons.Default.Notifications,
                         contentDescription = "Notifications",
-                        tint = Color(0xFF4A148C)
+                        tint = deepPurple
                     )
                 }
             }
@@ -118,13 +119,13 @@ fun HomeScreen(
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = Color(0xFF6A1B9A)
+                        tint = darkPurple
                     )
                 },
                 placeholder = {
                     Text(
                         text = "Search papers...",
-                        color = Color(0xFF6A1B9A).copy(alpha = 0.6f)
+                        color = darkPurple.copy(alpha = 0.6f)
                     )
                 },
                 modifier = Modifier
@@ -157,10 +158,10 @@ fun HomeScreen(
                     },
                     label = { Text("New") },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFF6A1B9A), // Deep purple
+                        selectedContainerColor = deepPurple,
                         selectedLabelColor = Color.White,
                         containerColor = Color.White.copy(alpha = 0.9f),
-                        labelColor = Color(0xFF6A1B9A)
+                        labelColor = darkPurple
                     )
                 )
 
@@ -183,10 +184,10 @@ fun HomeScreen(
                             }
                         },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Color(0xFF6A1B9A), // Deep purple
+                            selectedContainerColor = deepPurple,
                             selectedLabelColor = Color.White,
                             containerColor = Color.White.copy(alpha = 0.9f),
-                            labelColor = Color(0xFF6A1B9A)
+                            labelColor = darkPurple
                         )
                     )
 
@@ -211,7 +212,7 @@ fun HomeScreen(
                                 text = { 
                                     Text(
                                         text = label,
-                                        color = Color(0xFF6A1B9A)
+                                        color = darkPurple
                                     ) 
                                 },
                                 onClick = {
@@ -220,12 +221,12 @@ fun HomeScreen(
                                     viewModel.loadTopPapers(period)
                                 },
                                 colors = MenuDefaults.itemColors(
-                                    textColor = Color(0xFF6A1B9A),
-                                    leadingIconColor = Color(0xFF6A1B9A)
+                                    textColor = darkPurple,
+                                    leadingIconColor = darkPurple
                                 ),
                                 modifier = Modifier.background(
                                     color = if (selectedFilter == "top_${label.lowercase(Locale.getDefault()).replace(" ", "_")}") 
-                                        Color(0xFFF3E5F5) else Color.Transparent
+                                        lightPurple else Color.Transparent
                                 )
                             )
                         }
@@ -238,7 +239,7 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(lightPurple)
         ) {
             when (val state = uiState) {
                 is UiState.Loading -> {
@@ -246,41 +247,39 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = deepPurple)
                     }
                 }
                 is UiState.Success -> {
-                    if (state.data.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No papers found for your preferences",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        }
-                    } else {
-                        val isRefreshing = remember { mutableStateOf(false) }
-                        val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isRefreshing.value)
-
-                        SwipeRefresh(
-                            state = swipeRefreshState,
-                            onRefresh = {
-                                isRefreshing.value = true
-                                viewModel.refreshPapers()
-                                isRefreshing.value = false
-                            }
-                        ) {
-                            LazyColumn(
+                    SwipeRefresh(
+                        state = rememberSwipeRefreshState(false),
+                        onRefresh = { viewModel.refreshPapers() },
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        if (state.data.isEmpty()) {
+                            Box(
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(vertical = 8.dp)
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No papers found",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = darkPurple.copy(alpha = 0.6f)
+                                )
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                contentPadding = PaddingValues(vertical = 16.dp)
                             ) {
                                 items(state.data) { paper ->
                                     PaperCard(
                                         paper = paper,
-                                        onClick = { onPaperClick(paper) }
+                                        onClick = { onPaperClick(paper) },
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
                             }
@@ -292,21 +291,11 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = state.message,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Button(
-                                onClick = { viewModel.refreshPapers() }
-                            ) {
-                                Text("Retry")
-                            }
-                        }
+                        Text(
+                            text = state.message,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Red
+                        )
                     }
                 }
             }
