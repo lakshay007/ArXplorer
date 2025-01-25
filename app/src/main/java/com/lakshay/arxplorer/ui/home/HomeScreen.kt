@@ -43,7 +43,7 @@ fun HomeScreen(
         }
     }
 
-    // Custom purple colors
+
     val lightPurple = Color(0xFFF3E5F5)
     val mediumPurple = Color(0xFFE1BEE7)
     val darkPurple = Color(0xFFCE93D8)
@@ -70,8 +70,8 @@ fun HomeScreen(
             // Greeting and notifications row
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                    .fillMaxWidth(),
+
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {

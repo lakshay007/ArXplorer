@@ -31,12 +31,12 @@ fun PreferencesScreen(
 
     Surface(
         modifier = modifier.fillMaxSize(),
-        color = Color(0xFF00BFA5) // Modern teal background
+        color = Color(0xFF00BFA5)
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Header section with modern design
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
