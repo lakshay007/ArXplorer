@@ -2,11 +2,16 @@ package com.lakshay.arxplorer.ui.onboarding
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -21,6 +26,14 @@ import kotlinx.coroutines.launch
 fun OnboardingScreen(
     onSignInClick: () -> Unit
 ) {
+    val gradient = Brush.verticalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+        )
+    )
+
     val pages = listOf(
         OnboardingPage(
             title = "Discover Research Papers",
@@ -29,7 +42,7 @@ fun OnboardingScreen(
         ),
         OnboardingPage(
             title = "Read & Download",
-            description = "Read papers online or download them for offline access. Bookmark your favorites for later",
+            description = "Read papers online or download them for offline access and share them. Bookmark your favorites for later and get the summary and final results of papers in a single click.",
             imageRes = R.drawable.read_papers
         ),
         OnboardingPage(
@@ -42,72 +55,112 @@ fun OnboardingScreen(
     val pagerState = rememberPagerState()
     val coroutineScope = rememberCoroutineScope()
 
-    Column(
-        modifier = Modifier.fillMaxSize()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(gradient)
     ) {
-        HorizontalPager(
-            count = pages.size,
-            state = pagerState,
-            modifier = Modifier
-                .weight(0.8f)
-                .fillMaxWidth()
-        ) { position ->
-            PagerScreen(onboardingPage = pages[position])
-        }
-
-        HorizontalPagerIndicator(
-            pagerState = pagerState,
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(16.dp),
-            activeColor = MaterialTheme.colorScheme.primary
-        )
-
-        AnimatedVisibility(
-            visible = pagerState.currentPage == pages.size - 1,
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Button(
-                onClick = onSignInClick,
+            HorizontalPager(
+                count = pages.size,
+                state = pagerState,
                 modifier = Modifier
-                    .padding(horizontal = 40.dp)
+                    .weight(0.8f)
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp)
+            ) { position ->
+                PagerScreen(onboardingPage = pages[position])
+            }
+
+            HorizontalPagerIndicator(
+                pagerState = pagerState,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(16.dp),
+                activeColor = MaterialTheme.colorScheme.primary,
+                inactiveColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+            )
+
+            AnimatedVisibility(
+                visible = pagerState.currentPage == pages.size - 1,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "Sign in with Google",
-                    modifier = Modifier.padding(vertical = 8.dp)
+                GoogleSignInButton(
+                    onClick = onSignInClick,
+                    modifier = Modifier
+                        .padding(horizontal = 40.dp)
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp)
                 )
             }
-        }
 
-        if (pagerState.currentPage != pages.size - 1) {
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 40.dp)
-                    .fillMaxWidth()
-                    .padding(vertical = 24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                TextButton(
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(pages.size - 1)
-                        }
-                    }
+            if (pagerState.currentPage != pages.size - 1) {
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 40.dp)
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(text = "Skip")
-                }
-                TextButton(
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                    TextButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pages.size - 1)
+                            }
                         }
+                    ) {
+                        Text(text = "Skip")
                     }
-                ) {
-                    Text(text = "Next")
+                    TextButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                            }
+                        }
+                    ) {
+                        Text(text = "Next")
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun GoogleSignInButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ElevatedButton(
+        onClick = onClick,
+        modifier = modifier.height(56.dp),
+        colors = ButtonDefaults.elevatedButtonColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        shape = RoundedCornerShape(28.dp),
+        elevation = ButtonDefaults.elevatedButtonElevation(
+            defaultElevation = 6.dp,
+            pressedElevation = 8.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.google_logo),
+                contentDescription = "Google Logo",
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Sign in with Google",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
@@ -133,13 +186,15 @@ fun PagerScreen(onboardingPage: OnboardingPage) {
             text = onboardingPage.title,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = onboardingPage.description,
             fontSize = 16.sp,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

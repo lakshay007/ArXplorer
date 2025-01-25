@@ -9,14 +9,16 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
 import com.lakshay.arxplorer.ui.auth.AuthState
 import com.lakshay.arxplorer.ui.auth.AuthViewModel
 import com.lakshay.arxplorer.ui.components.ErrorScreen
 import com.lakshay.arxplorer.ui.components.LoadingScreen
 import com.lakshay.arxplorer.ui.home.HomeScreen
+import com.lakshay.arxplorer.ui.home.HomeViewModel
 import com.lakshay.arxplorer.ui.onboarding.OnboardingScreen
 import com.lakshay.arxplorer.ui.theme.ArXplorerTheme
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -24,13 +26,23 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
+import com.lakshay.arxplorer.ui.preferences.PreferencesScreen
+import com.lakshay.arxplorer.ui.preferences.PreferencesViewModel
+import com.lakshay.arxplorer.ui.preferences.PreferencesState
+import com.lakshay.arxplorer.ui.paper.PaperScreen
+import com.lakshay.arxplorer.ui.paper.PaperViewModel
+import com.lakshay.arxplorer.data.model.ArxivPaper
 
 private const val TAG = "MainActivity"
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: AuthViewModel by viewModels()
+    private val authViewModel: AuthViewModel by viewModels()
+    private val homeViewModel: HomeViewModel by viewModels()
+    private val paperViewModel: PaperViewModel by viewModels()
+    private val preferencesViewModel: PreferencesViewModel by viewModels()
     private lateinit var googleSignInClient: GoogleSignInClient
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -43,43 +55,61 @@ class MainActivity : ComponentActivity() {
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-        // Check for existing Google Sign In account and sign out to ensure fresh login
-        googleSignInClient.signOut().addOnCompleteListener {
-            Log.d(TAG, "Previous sign-in state cleared")
+        // Check for existing signed-in user
+        val account = GoogleSignIn.getLastSignedInAccount(this)
+        if (account?.idToken != null) {
+            Log.d(TAG, "Found existing signed in account")
+            authViewModel.handleSignInResult(account.idToken!!)
         }
 
         setContent {
             ArXplorerTheme {
+                var selectedPaper by remember { mutableStateOf<ArxivPaper?>(null) }
+                var showPreferences by remember { mutableStateOf(false) }
+                val authState by authViewModel.authState.collectAsState()
+
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val authState by viewModel.authState.collectAsState()
-                    Log.d(TAG, "Current auth state: $authState")
-
-                    when (authState) {
-                        is AuthState.Unauthenticated, is AuthState.Initial -> {
-                            OnboardingScreen(
-                                onSignInClick = { signIn() }
+                    when {
+                        selectedPaper != null -> {
+                            PaperScreen(
+                                paper = selectedPaper!!,
+                                onBackClick = { selectedPaper = null },
+                                onDownloadClick = { paperViewModel.downloadPdf(it) },
+                                onShareClick = { paperViewModel.sharePaper(it) }
                             )
                         }
-                        is AuthState.Authenticated -> {
-                            val username = (authState as AuthState.Authenticated).userName
-                            Log.d(TAG, "Authenticated user: $username")
-                            HomeScreen(username = username)
-                        }
-                        is AuthState.Loading -> {
-                            LoadingScreen()
-                        }
-                        is AuthState.Error -> {
-                            val error = (authState as AuthState.Error).message
-                            Log.e(TAG, "Auth error: $error")
-                            ErrorScreen(
-                                message = error,
-                                onRetry = { 
-                                    googleSignInClient.signOut().addOnCompleteListener {
-                                        signIn()
+                        showPreferences -> {
+                            PreferencesScreen(
+                                onPreferencesSelected = { preferences ->
+                                    Log.d(TAG, "Preferences selected: $preferences")
+                                    preferencesViewModel.savePreferences(preferences) {
+                                        Log.d(TAG, "Preferences saved, returning to home")
+                                        showPreferences = false
+                                        homeViewModel.refreshPapers()
                                     }
+                                }
+                            )
+                        }
+                        authState is AuthState.Authenticated -> {
+                            val username = (authState as AuthState.Authenticated).userName
+                            HomeScreen(
+                                viewModel = homeViewModel,
+                                username = username,
+                                onPaperClick = { paper ->
+                                    selectedPaper = paper
+                                },
+                                onPreferencesNeeded = {
+                                    showPreferences = true
+                                }
+                            )
+                        }
+                        else -> {
+                            OnboardingScreen(
+                                onSignInClick = {
+                                    signIn()
                                 }
                             )
                         }
@@ -108,10 +138,10 @@ class MainActivity : ComponentActivity() {
                 val idToken = account?.idToken
                 if (idToken != null) {
                     Log.d(TAG, "Got ID token, authenticating with Firebase")
-                    viewModel.handleSignInResult(idToken)
+                    authViewModel.handleSignInResult(idToken)
                 } else {
                     Log.e(TAG, "No ID token received")
-                    viewModel.handleSignInResult("")
+                    authViewModel.handleSignInResult("")
                 }
             } catch (e: ApiException) {
                 val errorMessage = when (e.statusCode) {
@@ -124,7 +154,7 @@ class MainActivity : ComponentActivity() {
                     else -> "Unknown error: ${e.statusCode}"
                 }
                 Log.e(TAG, "Google sign in failed: $errorMessage", e)
-                viewModel.handleSignInResult("")
+                authViewModel.handleSignInResult("")
             }
         }
     }
@@ -132,4 +162,9 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val RC_SIGN_IN = 9001
     }
+}
+
+sealed class Screen {
+    object Onboarding : Screen()
+    object Home : Screen()
 } 
