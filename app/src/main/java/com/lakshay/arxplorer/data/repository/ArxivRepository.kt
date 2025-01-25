@@ -5,16 +5,20 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.lakshay.arxplorer.data.model.ArxivPaper
 import com.lakshay.arxplorer.data.network.ArxivApi
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import com.lakshay.arxplorer.data.network.CrossrefApi
+import com.lakshay.arxplorer.data.network.SemanticScholarApi
+import kotlinx.coroutines.*
 import kotlinx.coroutines.tasks.await
+import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
+import java.time.format.DateTimeFormatter
 
 private const val TAG = "ArxivRepository"
 
 class ArxivRepository {
     private val api = ArxivApi()
+    private val crossrefApi = CrossrefApi()
+    private val semanticScholarApi = SemanticScholarApi()
     private val firestore = Firebase.firestore
 
     // Map user-friendly names to arXiv category codes
@@ -160,4 +164,93 @@ class ArxivRepository {
             false
         }
     }
+
+    suspend fun fetchTopPapersForUserPreferences(
+        userId: String,
+        timePeriod: TimePeriod
+    ): Result<List<ArxivPaper>> = coroutineScope {
+        try {
+            // Get user preferences
+            val preferencesDoc = firestore.collection("user_preferences")
+                .document(userId)
+                .get()
+                .await()
+
+            @Suppress("UNCHECKED_CAST")
+            val preferences = preferencesDoc.get("preferences") as? List<String>
+            if (preferences.isNullOrEmpty()) {
+                return@coroutineScope Result.success(emptyList())
+            }
+
+            // Get date range based on time period
+            val now = ZonedDateTime.now()
+            val (fromDate, untilDate) = when (timePeriod) {
+                TimePeriod.THIS_WEEK -> {
+                    val weekAgo = now.minusDays(7)
+                    Pair(weekAgo.format(DateTimeFormatter.ISO_DATE),
+                         now.format(DateTimeFormatter.ISO_DATE))
+                }
+                TimePeriod.THIS_MONTH -> {
+                    val monthAgo = now.minusMonths(1)
+                    Pair(monthAgo.format(DateTimeFormatter.ISO_DATE),
+                         now.format(DateTimeFormatter.ISO_DATE))
+                }
+                TimePeriod.THIS_YEAR -> {
+                    val yearAgo = now.minusYears(1)
+                    Pair(yearAgo.format(DateTimeFormatter.ISO_DATE),
+                         now.format(DateTimeFormatter.ISO_DATE))
+                }
+                TimePeriod.ALL_TIME -> Pair(null, now.format(DateTimeFormatter.ISO_DATE))
+            }
+
+            Log.d(TAG, "Date range: from=$fromDate, until=$untilDate")
+
+            // Fetch papers for each preference
+            val deferredPapers: List<Deferred<List<ArxivPaper>>> = preferences.mapNotNull { preference ->
+                val categoryCode = categoryMap[preference]
+                if (categoryCode == null) {
+                    Log.w(TAG, "Unknown category preference: $preference")
+                    null
+                } else {
+                    async<List<ArxivPaper>> {
+                        // First get top cited papers from Semantic Scholar
+                        val topPaperIds = semanticScholarApi.getTopPapersByField(
+                            field = categoryCode,
+                            fromDate = fromDate,
+                            untilDate = untilDate,
+                            limit = 20
+                        )
+
+                        if (topPaperIds.isEmpty()) {
+                            emptyList()
+                        } else {
+                            // Then fetch those papers from arXiv
+                            val query = topPaperIds.joinToString(" OR ") { "id:$it" }
+                            Log.d(TAG, "Fetching arXiv papers with query: $query")
+                            api.searchPapers(
+                                query = query,
+                                maxResults = topPaperIds.size
+                            ).getOrNull() ?: emptyList()
+                        }
+                    }
+                }
+            }
+
+            val allPapers: List<List<ArxivPaper>> = deferredPapers.awaitAll()
+            val papers: List<ArxivPaper> = allPapers.flatten()
+                .distinctBy { paper -> paper.id }
+
+            Result.success(papers)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching top papers", e)
+            Result.failure(e)
+        }
+    }
+}
+
+enum class TimePeriod {
+    THIS_WEEK,
+    THIS_MONTH,
+    THIS_YEAR,
+    ALL_TIME
 } 

@@ -15,5 +15,6 @@ data class ArxivPaper(
     val primaryCategory: String,
     val abstract: String,
     val commentaries: String? = null,
-    val journalRef: String? = null
+    val journalRef: String? = null,
+    val citationCount: Int = 0
 ) 

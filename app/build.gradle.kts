@@ -96,6 +96,7 @@ dependencies {
     // Accompanist for ViewPager and other utilities
     implementation("com.google.accompanist:accompanist-pager:0.32.0")
     implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
     
     // DataStore Preferences
     implementation("androidx.datastore:datastore-preferences:1.0.0")

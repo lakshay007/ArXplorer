@@ -13,3 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+caches
+wrapper
+android
+daemon
+native
+kotlin-profile

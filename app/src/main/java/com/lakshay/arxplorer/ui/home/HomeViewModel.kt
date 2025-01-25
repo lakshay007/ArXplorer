@@ -4,9 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
 import com.lakshay.arxplorer.data.model.ArxivPaper
 import com.lakshay.arxplorer.data.repository.ArxivRepository
+import com.lakshay.arxplorer.data.repository.TimePeriod
 import com.lakshay.arxplorer.ui.common.UiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -67,9 +67,29 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    fun loadTopPapers(timePeriod: TimePeriod) {
+        viewModelScope.launch {
+            _uiState.value = UiState.Loading
+            val userId = auth.currentUser?.uid
+            if (userId == null) {
+                _uiState.value = UiState.Error("User not authenticated")
+                return@launch
+            }
+
+            repository.fetchTopPapersForUserPreferences(userId, timePeriod).fold(
+                onSuccess = { papers ->
+                    _uiState.value = UiState.Success(papers)
+                },
+                onFailure = { error ->
+                    _uiState.value = UiState.Error(error.message ?: "Unknown error")
+                }
+            )
+        }
+    }
+
     fun refreshPapers() {
         viewModelScope.launch {
-            _showPreferencesScreen.value = false // Reset preferences screen state
+            _showPreferencesScreen.value = false
             checkPreferencesAndLoadPapers()
         }
     }
