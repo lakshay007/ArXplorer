@@ -7,13 +7,16 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.io.IOException
-import java.time.ZonedDateTime
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 private const val TAG = "SemanticScholarApi"
 private const val BASE_URL = "https://api.semanticscholar.org/graph/v1"
 
 class SemanticScholarApi {
     private val client = OkHttpClient()
+    private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val inputDateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-ddXXX")
 
     suspend fun getCitationCount(paperId: String, doi: String?): Int {
         return withContext(Dispatchers.IO) {
@@ -82,10 +85,20 @@ class SemanticScholarApi {
 
             // Build date filter
             val dateFilter = if (fromDate != null && untilDate != null) {
-                // Extract just the date part (YYYY-MM-DD) and remove any time components
-                val formattedFromDate = fromDate.substringBefore(" ") // Takes YYYY-MM-DD
-                val formattedUntilDate = untilDate.substringBefore(" ") // Takes YYYY-MM-DD
-                "&year=$formattedFromDate:$formattedUntilDate"
+                try {
+                    // Remove the timezone offset from the date string
+                    val cleanFromDate = fromDate.substringBefore("+")
+                    val cleanUntilDate = untilDate.substringBefore("+")
+                    
+                    // Parse as LocalDate since we don't need timezone information
+                    val formattedFromDate = LocalDate.parse(cleanFromDate).format(dateFormatter)
+                    val formattedUntilDate = LocalDate.parse(cleanUntilDate).format(dateFormatter)
+                    
+                    "&publicationDateOrYear=$formattedFromDate:$formattedUntilDate"
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error formatting dates: $e")
+                    ""
+                }
             } else ""
 
             // Build URL with all necessary parameters - using the exact working format
