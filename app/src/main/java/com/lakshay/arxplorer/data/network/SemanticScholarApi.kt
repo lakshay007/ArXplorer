@@ -11,7 +11,6 @@ import java.time.ZonedDateTime
 
 private const val TAG = "SemanticScholarApi"
 private const val BASE_URL = "https://api.semanticscholar.org/graph/v1"
-private const val API_KEY = "e0c6c9c9e7e3c0f0b9f0e0c6c9c9e7e3" // Replace with your actual API key
 
 class SemanticScholarApi {
     private val client = OkHttpClient()
@@ -43,33 +42,68 @@ class SemanticScholarApi {
         limit: Int = 20
     ): List<String> = withContext(Dispatchers.IO) {
         try {
-            // Convert field to appropriate query
-            val query = when {
-                field.startsWith("cs.") -> field.substring(3).replace(".", " ")
-                field.startsWith("math.") -> field.substring(5).replace(".", " ")
-                else -> field.replace(".", " ")
+            // Convert arXiv category to appropriate Semantic Scholar query terms
+            val rawQuery = when (field) {
+                // Computer Science fields
+                "cs.AI" -> "\"artificial intelligence\""
+                "cs.CV" -> "\"computer vision\""
+                "cs.CL" -> "\"natural language processing\""
+                "cs.RO" -> "\"robotics\""
+                "cs.LG" -> "\"machine learning\""
+                "cs.CR" -> "\"cryptography\""
+                "cs.DB" -> "\"database systems\""
+                "cs.HC" -> "\"human computer interaction\""
+                "cs.PL" -> "\"programming languages\""
+                "cs.SE" -> "\"software engineering\""
+
+                // Physics fields
+                "astro-ph" -> "\"astrophysics\""
+                "quant-ph" -> "\"quantum physics\""
+                "hep-th" -> "\"high energy physics\""
+                "nucl-th" -> "\"nuclear physics\""
+                "cond-mat" -> "\"condensed matter physics\""
+                "math-ph" -> "\"mathematical physics\""
+                "physics.app-ph" -> "\"applied physics\""
+                "physics.comp-ph" -> "\"computational physics\""
+
+                // Mathematics fields
+                "math.AG" -> "\"algebraic geometry\""
+                "math.GE" -> "\"geometry\""
+                "math.NT" -> "\"number theory\""
+                "math.AN" -> "\"mathematical analysis\""
+                "math.PR" -> "\"probability theory\""
+                "math.ST" -> "\"statistics\""
+                "math.LO" -> "\"mathematical logic\""
+                "math.CO" -> "\"combinatorics\""
+
+                // Default case: use the field name without the prefix
+                else -> "\"${field.substringAfter(".").replace(".", " ")}\""
             }
 
             // Build date filter
             val dateFilter = if (fromDate != null && untilDate != null) {
-                "&publicationDateOrYear=$fromDate:$untilDate"
-            } else if (untilDate != null) {
-                "&publicationDateOrYear=:$untilDate"
+                // Extract just the date part (YYYY-MM-DD) and remove any time components
+                val formattedFromDate = fromDate.substringBefore(" ") // Takes YYYY-MM-DD
+                val formattedUntilDate = untilDate.substringBefore(" ") // Takes YYYY-MM-DD
+                "&year=$formattedFromDate:$formattedUntilDate"
             } else ""
 
-            // Build URL with all necessary parameters
-            val url = "$BASE_URL/paper/search?query=\"$query\"" +
-                     "&fields=title,citationCount,externalIds,publicationDate" +
+            // Build URL with all necessary parameters - using the exact working format
+            val url = "$BASE_URL/paper/search/bulk?query=$rawQuery" +
+                     "&fields=title,citationCount,externalIds,publicationDate,openAccessPdf,isOpenAccess" +
+                     "&openAccessPdf" +
                      dateFilter +
                      "&sort=citationCount:desc" +
                      "&limit=$limit"
 
+            Log.d(TAG, "Making Semantic Scholar bulk request with query: $rawQuery")
+            Log.d(TAG, "URL: $url")
+            
             val request = Request.Builder()
                 .url(url)
                 .header("User-Agent", "ArXplorer/1.0")
                 .build()
 
-            Log.d(TAG, "Making Semantic Scholar request: $url")
             val response = client.newCall(request).execute()
             val responseBody = response.body?.string()
 
@@ -80,8 +114,10 @@ class SemanticScholarApi {
             }
 
             val jsonResponse = JSONObject(responseBody ?: return@withContext emptyList())
+            Log.d(TAG, "Response: $responseBody")
             val papers = jsonResponse.getJSONArray("data")
-            Log.d(TAG, "Found ${papers.length()} papers in total")
+            val total = jsonResponse.optInt("total", 0)
+            Log.d(TAG, "Found $total total papers, fetched ${papers.length()} papers")
 
             val arxivIds = mutableListOf<String>()
             for (i in 0 until papers.length()) {
@@ -89,10 +125,13 @@ class SemanticScholarApi {
                 val citationCount = paper.optInt("citationCount", 0)
                 val externalIds = paper.optJSONObject("externalIds")
                 val publicationDate = paper.optString("publicationDate", "")
+                val title = paper.optString("title", "")
+                val isOpenAccess = paper.optBoolean("isOpenAccess", false)
+                val openAccessPdf = paper.optJSONObject("openAccessPdf")
                 
                 if (externalIds != null && externalIds.has("ArXiv")) {
                     val arxivId = externalIds.getString("ArXiv")
-                    Log.d(TAG, "Found paper with arXiv ID: $arxivId, citations: $citationCount, date: $publicationDate")
+                    Log.d(TAG, "Found paper: '$title' with arXiv ID: $arxivId, citations: $citationCount, date: $publicationDate, isOpenAccess: $isOpenAccess")
                     arxivIds.add(arxivId)
                 }
             }
@@ -109,7 +148,6 @@ class SemanticScholarApi {
     private fun getCitationCountByDoi(doi: String): Int {
         val request = Request.Builder()
             .url("$BASE_URL/paper/DOI:$doi?fields=citationCount")
-            .addHeader("x-api-key", API_KEY)
             .build()
 
         return try {
@@ -127,7 +165,6 @@ class SemanticScholarApi {
     private fun getCitationCountByArxivId(arxivId: String): Int {
         val request = Request.Builder()
             .url("$BASE_URL/paper/arXiv:$arxivId?fields=citationCount")
-            .addHeader("x-api-key", API_KEY)
             .build()
 
         return try {

@@ -21,19 +21,43 @@ class AuthViewModel : ViewModel() {
     init {
         checkAuthState()
 
+        // Listen for Firebase auth state changes
         auth.addAuthStateListener { firebaseAuth ->
-            Log.d(TAG, "Auth state changed: ${firebaseAuth.currentUser?.displayName}")
-            checkAuthState()
+            val user = firebaseAuth.currentUser
+            Log.d(TAG, "Auth state changed: ${user?.displayName}")
+            if (user != null) {
+                // Get fresh ID token to ensure it's valid
+                viewModelScope.launch {
+                    try {
+                        user.getIdToken(true).await()
+                        _authState.value = AuthState.Authenticated(user.displayName ?: "User")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error refreshing token", e)
+                        _authState.value = AuthState.Unauthenticated
+                    }
+                }
+            } else {
+                _authState.value = AuthState.Unauthenticated
+            }
         }
     }
 
     private fun checkAuthState() {
         val currentUser = auth.currentUser
         Log.d(TAG, "Checking auth state: ${currentUser?.displayName}")
-        _authState.value = if (currentUser != null) {
-            AuthState.Authenticated(currentUser.displayName ?: "User")
+        if (currentUser != null) {
+            viewModelScope.launch {
+                try {
+                    // Force token refresh on initial check
+                    currentUser.getIdToken(true).await()
+                    _authState.value = AuthState.Authenticated(currentUser.displayName ?: "User")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error refreshing token", e)
+                    _authState.value = AuthState.Unauthenticated
+                }
+            }
         } else {
-            AuthState.Unauthenticated
+            _authState.value = AuthState.Unauthenticated
         }
     }
 

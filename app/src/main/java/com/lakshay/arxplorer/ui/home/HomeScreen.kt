@@ -1,6 +1,7 @@
 package com.lakshay.arxplorer.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,17 +37,40 @@ fun HomeScreen(
     onPreferencesNeeded: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var showSortOptions by remember { mutableStateOf(false) }
+    var selectedSortBy by remember { mutableStateOf("all") }
+    var selectedSortOrder by remember { mutableStateOf("descending") }
     val greeting = remember { getGreeting() }
     val uiState by viewModel.uiState.collectAsState()
     val showPreferences by viewModel.showPreferencesScreen.collectAsState()
 
+    // Sort options
+    val sortByOptions = listOf(
+        "All" to "all",
+        "Title" to "title",
+        "Relevance" to "relevance",
+        "Last Updated" to "lastUpdatedDate",
+        "Submitted Date" to "submittedDate"
+    )
+    val sortOrderOptions = listOf(
+        "Descending" to "descending",
+        "Ascending" to "ascending"
+    )
+
+    // Function to perform search with current sort options
+    fun performSearch() {
+        viewModel.searchPapers(
+            query = searchQuery.trim(),
+            sortBy = selectedSortBy,
+            sortOrder = selectedSortOrder
+        )
+    }
 
     LaunchedEffect(showPreferences) {
         if (showPreferences) {
             onPreferencesNeeded()
         }
     }
-
 
     val deepPurple = Color(0xFF4A148C) // Primary color
     val lightPurple = Color(0xFFF3E5F5) // Surface color
@@ -108,42 +132,181 @@ fun HomeScreen(
                 }
             }
             
-            // Search bar
-            SearchBar(
-                query = searchQuery,
-                onQueryChange = { searchQuery = it },
-                onSearch = { /* TODO: Implement search */ },
-                active = false,
-                onActiveChange = {},
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = darkPurple
-                    )
-                },
-                placeholder = {
-                    Text(
-                        text = "Search papers...",
-                        color = darkPurple.copy(alpha = 0.6f)
-                    )
-                },
+            // Search bar with sort button
+            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(28.dp)),
-                colors = SearchBarDefaults.colors(
-                    containerColor = Color.White.copy(alpha = 0.9f),
-                    dividerColor = Color.Transparent
-                )
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Search suggestions will go here
+                SearchBar(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    onSearch = { performSearch() },
+                    active = false,
+                    onActiveChange = {},
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = darkPurple
+                        )
+                    },
+                    placeholder = {
+                        Text(
+                            text = "Search papers...",
+                            color = darkPurple.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 56.dp)
+                        .clip(RoundedCornerShape(28.dp)),
+                    colors = SearchBarDefaults.colors(
+                        containerColor = Color.White.copy(alpha = 0.9f),
+                        dividerColor = Color.Transparent
+                    )
+                ) {
+                    // Search suggestions will go here
+                }
+
+                // Sort button with custom icon
+                Box(
+                    modifier = Modifier
+                        .height(56.dp)  // Match SearchBar height
+                        .aspectRatio(1f) 
+                        .padding(top = 25.dp) // Keep it square
+                ) {
+                    IconButton(
+                        onClick = { showSortOptions = true },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(Color.White.copy(alpha = 0.9f))
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            // First line with end circle
+                            Row(
+                                modifier = Modifier.width(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Line
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(2.dp)
+                                        .background(darkPurple)
+                                )
+                                // End circle
+                                Box(
+                                    modifier = Modifier
+                                        .size(4.dp)
+                                        .background(Color.White, RoundedCornerShape(2.dp))
+                                        .border(1.dp, darkPurple, RoundedCornerShape(2.dp))
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            // Second line with start circle
+                            Row(
+                                modifier = Modifier.width(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Start circle
+                                Box(
+                                    modifier = Modifier
+                                        .size(4.dp)
+                                        .background(Color.White, RoundedCornerShape(2.dp))
+                                        .border(1.dp, darkPurple, RoundedCornerShape(2.dp))
+                                )
+                                // Line
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(2.dp)
+                                        .background(darkPurple)
+                                )
+                            }
+                        }
+                    }
+
+                    DropdownMenu(
+                        expanded = showSortOptions,
+                        onDismissRequest = { showSortOptions = false },
+                        modifier = Modifier
+                            .background(
+                                color = Color.White.copy(alpha = 0.95f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .width(200.dp)
+                    ) {
+                        Text(
+                            text = "Sort By",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = darkPurple,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        sortByOptions.forEach { (label, value) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    selectedSortBy = value
+                                    showSortOptions = false
+                                    performSearch()
+                                },
+                                colors = MenuDefaults.itemColors(
+                                    textColor = darkPurple
+                                ),
+                                modifier = Modifier.background(
+                                    if (selectedSortBy == value) lightPurple else Color.Transparent
+                                )
+                            )
+                        }
+
+                        Divider(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            color = darkPurple.copy(alpha = 0.1f)
+                        )
+
+                        Text(
+                            text = "Sort Order",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = darkPurple,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        sortOrderOptions.forEach { (label, value) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    selectedSortOrder = value
+                                    showSortOptions = false
+                                    performSearch()
+                                },
+                                colors = MenuDefaults.itemColors(
+                                    textColor = darkPurple
+                                ),
+                                modifier = Modifier.background(
+                                    if (selectedSortOrder == value) lightPurple else Color.Transparent
+                                )
+                            )
+                        }
+                    }
+                }
             }
 
             // Filter chips
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 16.dp),
+                    .padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 var selectedFilter by remember { mutableStateOf("new") }
@@ -250,38 +413,37 @@ fun HomeScreen(
                         CircularProgressIndicator(color = deepPurple)
                     }
                 }
+                is UiState.Empty -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No papers found",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = darkPurple.copy(alpha = 0.6f)
+                        )
+                    }
+                }
                 is UiState.Success -> {
                     SwipeRefresh(
                         state = rememberSwipeRefreshState(false),
                         onRefresh = { viewModel.refreshPapers() },
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        if (state.data.isEmpty()) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "No papers found",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = darkPurple.copy(alpha = 0.6f)
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(vertical = 16.dp)
+                        ) {
+                            items(state.data) { paper ->
+                                PaperCard(
+                                    paper = paper,
+                                    onClick = { onPaperClick(paper) },
+                                    modifier = Modifier.fillMaxWidth()
                                 )
-                            }
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                contentPadding = PaddingValues(vertical = 16.dp)
-                            ) {
-                                items(state.data) { paper ->
-                                    PaperCard(
-                                        paper = paper,
-                                        onClick = { onPaperClick(paper) },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
                             }
                         }
                     }

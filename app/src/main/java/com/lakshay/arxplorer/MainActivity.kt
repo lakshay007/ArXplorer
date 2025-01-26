@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.lifecycle.lifecycleScope
 import com.lakshay.arxplorer.ui.auth.AuthState
 import com.lakshay.arxplorer.ui.auth.AuthViewModel
 import com.lakshay.arxplorer.ui.components.ErrorScreen
@@ -32,6 +33,8 @@ import com.lakshay.arxplorer.ui.preferences.PreferencesState
 import com.lakshay.arxplorer.ui.paper.PaperScreen
 import com.lakshay.arxplorer.ui.paper.PaperViewModel
 import com.lakshay.arxplorer.data.model.ArxivPaper
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.launch
 
 private const val TAG = "MainActivity"
 
@@ -55,11 +58,25 @@ class MainActivity : ComponentActivity() {
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-        // Check for existing signed-in user
-        val account = GoogleSignIn.getLastSignedInAccount(this)
-        if (account?.idToken != null) {
-            Log.d(TAG, "Found existing signed in account")
-            authViewModel.handleSignInResult(account.idToken!!)
+        // Check for existing signed-in user and attempt silent sign-in
+        lifecycleScope.launch {
+            try {
+                val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
+                if (account != null) {
+                    // Try silent sign-in to refresh token
+                    val silentSignInResult = googleSignInClient.silentSignIn().await()
+                    val idToken = silentSignInResult.idToken
+                    if (idToken != null) {
+                        Log.d(TAG, "Silent sign-in successful")
+                        authViewModel.handleSignInResult(idToken)
+                    } else {
+                        Log.d(TAG, "Silent sign-in failed - no token")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Silent sign-in failed", e)
+                // Don't show error to user, they can still manually sign in
+            }
         }
 
         setContent {

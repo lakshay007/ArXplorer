@@ -3,6 +3,7 @@ package com.lakshay.arxplorer.data.network
 import android.util.Log
 import com.lakshay.arxplorer.data.model.ArxivPaper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -24,6 +25,10 @@ class ArxivApi {
         sortOrder: String = "descending"
     ): Result<List<ArxivPaper>> = withContext(Dispatchers.IO) {
         try {
+            // Add a small delay to avoid hitting rate limits
+            delay(100)
+            
+            // Build the search URL with updated parameters
             val searchUrl = buildSearchUrl(query, start, maxResults, sortBy, sortOrder)
             Log.d(TAG, "Making API request to: $searchUrl")
             
@@ -43,8 +48,12 @@ class ArxivApi {
         sortBy: String,
         sortOrder: String
     ): String {
-        return "$baseUrl?search_query=$query&start=$start&max_results=$maxResults" +
-                "&sortBy=$sortBy&sortOrder=$sortOrder"
+        return "$baseUrl?search_query=$query" +
+               "&start=$start" +
+               "&max_results=$maxResults" +
+               "&sortBy=$sortBy" +
+               "&sortOrder=$sortOrder" +
+               "&include_cross_list=true"  // Include cross-listed papers
     }
 
     private fun fetchAndParsePapers(urlString: String): List<ArxivPaper> {

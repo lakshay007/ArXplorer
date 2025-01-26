@@ -93,4 +93,40 @@ class HomeViewModel : ViewModel() {
             checkPreferencesAndLoadPapers()
         }
     }
+
+    fun searchPapers(
+        query: String,
+        sortBy: String = "relevance",
+        sortOrder: String = "descending"
+    ) {
+        if (query.isBlank()) {
+            refreshPapers() // If query is empty, show normal feed
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = UiState.Loading
+            try {
+                val result = repository.searchArxiv(
+                    query = query,
+                    sortBy = sortBy,
+                    sortOrder = sortOrder
+                )
+                result.fold(
+                    onSuccess = { papers ->
+                        _uiState.value = if (papers.isEmpty()) {
+                            UiState.Empty
+                        } else {
+                            UiState.Success(papers)
+                        }
+                    },
+                    onFailure = { error ->
+                        _uiState.value = UiState.Error(error.message ?: "Unknown error occurred")
+                    }
+                )
+            } catch (e: Exception) {
+                _uiState.value = UiState.Error(e.message ?: "Unknown error occurred")
+            }
+        }
+    }
 } 

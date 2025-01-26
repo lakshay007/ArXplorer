@@ -110,6 +110,9 @@ dependencies {
     implementation("com.github.mhiew:android-pdf-viewer:3.2.0-beta.3")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // Add lifecycle-runtime-ktx dependency
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

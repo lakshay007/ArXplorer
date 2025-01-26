@@ -84,7 +84,7 @@ class ArxivRepository {
 
             Log.d(TAG, "Found preferences: $preferences")
 
-            // Fetch papers for each preference in parallel
+            // Fetch papers for each preference in parallel with a small delay between requests
             coroutineScope {
                 val deferredPapers: List<Deferred<List<ArxivPaper>>> = preferences
                     .mapNotNull { preference ->
@@ -98,7 +98,8 @@ class ArxivRepository {
                                 val result = api.searchPapers(
                                     query = "cat:$categoryCode",
                                     maxResults = 5,
-                                    sortBy = "submittedDate"
+                                    sortBy = "lastUpdatedDate",  // Use lastUpdatedDate instead of submittedDate
+                                    sortOrder = "descending"
                                 )
                                 Log.d(TAG, "Result for $categoryCode: ${result.getOrNull()?.size ?: 0} papers")
                                 result.getOrNull() ?: emptyList()
@@ -108,8 +109,8 @@ class ArxivRepository {
 
                 val papers: List<List<ArxivPaper>> = deferredPapers.awaitAll()
                 val flattenedPapers: List<ArxivPaper> = papers.flatten()
-                    .sortedByDescending { paper: ArxivPaper -> paper.publishedDate }
-                    .distinctBy { paper: ArxivPaper -> paper.id }
+                    .sortedByDescending { it.updatedDate }  // Sort by updated date
+                    .distinctBy { it.id }
 
                 Log.d(TAG, "Total papers fetched: ${flattenedPapers.size}")
                 Result.success(flattenedPapers)
@@ -243,6 +244,33 @@ class ArxivRepository {
             Result.success(papers)
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching top papers", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun searchArxiv(
+        query: String,
+        maxResults: Int = 20,
+        sortBy: String = "all",  // Changed default to "all"
+        sortOrder: String = "descending"  // Can be "ascending" or "descending"
+    ): Result<List<ArxivPaper>> {
+        return try {
+            Log.d(TAG, "Searching arXiv for query: $query")
+            // Construct search query based on sortBy parameter
+            val searchQuery = when (sortBy) {
+                "title" -> "ti:$query"
+                "all" -> "all:$query"
+                else -> "all:$query"  // Default to all fields if unknown sortBy value
+            }
+            
+            api.searchPapers(
+                query = searchQuery,
+                maxResults = maxResults,
+                sortBy = if (sortBy in listOf("all", "title")) "relevance" else sortBy,
+                sortOrder = sortOrder
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error searching papers", e)
             Result.failure(e)
         }
     }
