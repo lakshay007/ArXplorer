@@ -12,7 +12,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Text
 import androidx.lifecycle.lifecycleScope
 import com.lakshay.arxplorer.ui.auth.AuthState
 import com.lakshay.arxplorer.ui.auth.AuthViewModel
@@ -29,14 +28,16 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.lakshay.arxplorer.ui.preferences.PreferencesScreen
 import com.lakshay.arxplorer.ui.preferences.PreferencesViewModel
-import com.lakshay.arxplorer.ui.preferences.PreferencesState
-import com.lakshay.arxplorer.ui.paper.PaperScreen
 import com.lakshay.arxplorer.ui.paper.PaperViewModel
-import com.lakshay.arxplorer.data.model.ArxivPaper
+import com.lakshay.arxplorer.ui.splash.SplashScreen
+import com.lakshay.arxplorer.ui.ArXplorerApp
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import androidx.navigation.compose.rememberNavController
 
 private const val TAG = "MainActivity"
+private const val RC_SIGN_IN = 9001
 
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
@@ -81,54 +82,47 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ArXplorerTheme {
-                var selectedPaper by remember { mutableStateOf<ArxivPaper?>(null) }
-                var showPreferences by remember { mutableStateOf(false) }
                 val authState by authViewModel.authState.collectAsState()
+                var showSplash by remember { mutableStateOf(true) }
 
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    when {
-                        selectedPaper != null -> {
-                            PaperScreen(
-                                paper = selectedPaper!!,
-                                onBackClick = { selectedPaper = null },
-                                onDownloadClick = { paperViewModel.downloadPdf(it) },
-                                onShareClick = { paperViewModel.sharePaper(it) }
+                LaunchedEffect(authState) {
+                    if (authState !is AuthState.Loading) {
+                        delay(1000) // Show splash for at least 1 second
+                        showSplash = false
+                    }
+                }
+
+                if (showSplash) {
+                    SplashScreen()
+                } else {
+                    when (authState) {
+                        is AuthState.Loading -> {
+                            // This case won't be visible due to splash screen
+                        }
+                        is AuthState.Authenticated -> {
+                            ArXplorerApp(
+                                homeViewModel = homeViewModel,
+                                paperViewModel = paperViewModel,
+                                preferencesViewModel = preferencesViewModel
                             )
                         }
-                        showPreferences -> {
-                            PreferencesScreen(
-                                onPreferencesSelected = { preferences ->
-                                    Log.d(TAG, "Preferences selected: $preferences")
-                                    preferencesViewModel.savePreferences(preferences) {
-                                        Log.d(TAG, "Preferences saved, returning to home")
-                                        showPreferences = false
-                                        homeViewModel.refreshPapers()
-                                    }
-                                }
-                            )
-                        }
-                        authState is AuthState.Authenticated -> {
-                            val username = (authState as AuthState.Authenticated).userName
-                            HomeScreen(
-                                viewModel = homeViewModel,
-                                username = username,
-                                onPaperClick = { paper ->
-                                    selectedPaper = paper
-                                },
-                                onPreferencesNeeded = {
-                                    showPreferences = true
-                                }
-                            )
-                        }
-                        else -> {
+                        is AuthState.Unauthenticated -> {
                             OnboardingScreen(
                                 onSignInClick = {
                                     signIn()
                                 }
                             )
+                        }
+                        is AuthState.Error -> {
+                            ErrorScreen(
+                                message = (authState as AuthState.Error).message,
+                                onRetry = {
+                                    signIn()
+                                }
+                            )
+                        }
+                        AuthState.Initial -> {
+                            // This case won't be visible due to splash screen
                         }
                     }
                 }
@@ -136,48 +130,38 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun signIn() {
-        Log.d(TAG, "Starting sign in process")
-        val signInIntent = googleSignInClient.signInIntent
-        startActivityForResult(signInIntent, RC_SIGN_IN)
-    }
-
-    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
         if (requestCode == RC_SIGN_IN) {
-            Log.d(TAG, "Sign in result received")
-            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             try {
+                val task = GoogleSignIn.getSignedInAccountFromIntent(data)
                 val account = task.getResult(ApiException::class.java)
-                Log.d(TAG, "Google sign in success: ${account?.email}, ID Token: ${account?.idToken?.take(10)}...")
-                val idToken = account?.idToken
-                if (idToken != null) {
-                    Log.d(TAG, "Got ID token, authenticating with Firebase")
-                    authViewModel.handleSignInResult(idToken)
-                } else {
-                    Log.e(TAG, "No ID token received")
-                    authViewModel.handleSignInResult("")
+                account.idToken?.let { token ->
+                    Log.d(TAG, "Google sign in success")
+                    authViewModel.handleSignInResult(token)
+                } ?: run {
+                    Log.e(TAG, "No ID token!")
+                    authViewModel.handleSignInError("No ID token received")
                 }
             } catch (e: ApiException) {
-                val errorMessage = when (e.statusCode) {
+                val message = when (e.statusCode) {
                     GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> "Sign in cancelled"
                     GoogleSignInStatusCodes.NETWORK_ERROR -> "Network error"
                     GoogleSignInStatusCodes.INVALID_ACCOUNT -> "Invalid account"
                     GoogleSignInStatusCodes.SIGN_IN_REQUIRED -> "Sign in required"
                     GoogleSignInStatusCodes.SIGN_IN_FAILED -> "Sign in failed"
-                    GoogleSignInStatusCodes.DEVELOPER_ERROR -> "Developer error - check OAuth configuration"
                     else -> "Unknown error: ${e.statusCode}"
                 }
-                Log.e(TAG, "Google sign in failed: $errorMessage", e)
-                authViewModel.handleSignInResult("")
+                Log.e(TAG, "Google sign in failed: $message", e)
+                authViewModel.handleSignInError(message)
             }
         }
     }
 
-    companion object {
-        private const val RC_SIGN_IN = 9001
+    private fun signIn() {
+        val signInIntent = googleSignInClient.signInIntent
+        startActivityForResult(signInIntent, RC_SIGN_IN)
     }
 }
 

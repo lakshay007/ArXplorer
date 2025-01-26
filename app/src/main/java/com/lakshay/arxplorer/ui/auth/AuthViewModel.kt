@@ -92,6 +92,15 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    fun handleSignInError(message: String) {
+        _authState.value = AuthState.Error(message)
+    }
+
+    fun signOut() {
+        auth.signOut()
+        _authState.value = AuthState.Unauthenticated
+    }
+
     override fun onCleared() {
         super.onCleared()
         auth.removeAuthStateListener { checkAuthState() }
