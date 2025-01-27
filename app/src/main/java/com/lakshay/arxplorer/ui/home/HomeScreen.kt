@@ -319,7 +319,7 @@ fun HomeScreen(
                         selectedFilter = "new"
                         viewModel.refreshPapers()
                     },
-                    label = { Text("New") },
+                    label = { Text("New on ArXiv") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = deepPurple,
                         selectedLabelColor = Color.White,
@@ -338,7 +338,7 @@ fun HomeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Top")
+                                Text("Top published papers")
                                 Icon(
                                     imageVector = Icons.Default.ArrowDropDown,
                                     contentDescription = "Show time periods",
@@ -431,6 +431,8 @@ fun HomeScreen(
                         onRefresh = { viewModel.refreshPapers() },
                         modifier = Modifier.fillMaxSize()
                     ) {
+                        val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -444,6 +446,37 @@ fun HomeScreen(
                                     onClick = { onPaperClick(paper) },
                                     modifier = Modifier.fillMaxWidth()
                                 )
+                            }
+
+                            item {
+                                if (state.data.isNotEmpty()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Button(
+                                            onClick = { viewModel.loadMorePapers() },
+                                            enabled = !isLoadingMore,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = deepPurple,
+                                                contentColor = Color.White
+                                            ),
+                                            modifier = Modifier.fillMaxWidth(0.5f)
+                                        ) {
+                                            if (isLoadingMore) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(24.dp),
+                                                    color = Color.White,
+                                                    strokeWidth = 2.dp
+                                                )
+                                            } else {
+                                                Text("Load More")
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

@@ -25,10 +25,10 @@ class ArxivApi {
         sortOrder: String = "descending"
     ): Result<List<ArxivPaper>> = withContext(Dispatchers.IO) {
         try {
-            // Add a small delay to avoid hitting rate limits
+
             delay(100)
             
-            // Build the search URL with updated parameters
+
             val searchUrl = buildSearchUrl(query, start, maxResults, sortBy, sortOrder)
             Log.d(TAG, "Making API request to: $searchUrl")
             
@@ -53,7 +53,7 @@ class ArxivApi {
                "&max_results=$maxResults" +
                "&sortBy=$sortBy" +
                "&sortOrder=$sortOrder" +
-               "&include_cross_list=true"  // Include cross-listed papers
+               "&include_cross_list=true"
     }
 
     private fun fetchAndParsePapers(urlString: String): List<ArxivPaper> {

@@ -25,6 +25,9 @@ class HomeViewModel : ViewModel() {
     private val _showPreferencesScreen = MutableStateFlow(false)
     val showPreferencesScreen: StateFlow<Boolean> = _showPreferencesScreen.asStateFlow()
 
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
+
     init {
         viewModelScope.launch {
             checkPreferencesAndLoadPapers()
@@ -126,6 +129,32 @@ class HomeViewModel : ViewModel() {
                 )
             } catch (e: Exception) {
                 _uiState.value = UiState.Error(e.message ?: "Unknown error occurred")
+            }
+        }
+    }
+
+    fun loadMorePapers() {
+        viewModelScope.launch {
+            _isLoadingMore.value = true
+            try {
+                val userId = auth.currentUser?.uid
+                if (userId == null) {
+                    _uiState.value = UiState.Error("User not authenticated")
+                    return@launch
+                }
+
+                repository.loadMorePapers(userId).fold(
+                    onSuccess = { morePapers ->
+                        val currentPapers = (_uiState.value as? UiState.Success)?.data ?: emptyList()
+                        _uiState.value = UiState.Success(currentPapers + morePapers)
+                        Log.d(TAG, "Loaded ${morePapers.size} more papers, total now: ${currentPapers.size + morePapers.size}")
+                    },
+                    onFailure = { error ->
+                        Log.e(TAG, "Error loading more papers", error)
+                    }
+                )
+            } finally {
+                _isLoadingMore.value = false
             }
         }
     }

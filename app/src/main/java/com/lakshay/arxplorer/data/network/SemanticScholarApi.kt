@@ -45,42 +45,17 @@ class SemanticScholarApi {
         limit: Int = 20
     ): List<String> = withContext(Dispatchers.IO) {
         try {
-            // Convert arXiv category to appropriate Semantic Scholar query terms
-            val rawQuery = when (field) {
-                // Computer Science fields
-                "cs.AI" -> "\"artificial intelligence\""
-                "cs.CV" -> "\"computer vision\""
-                "cs.CL" -> "\"natural language processing\""
-                "cs.RO" -> "\"robotics\""
-                "cs.LG" -> "\"machine learning\""
-                "cs.CR" -> "\"cryptography\""
-                "cs.DB" -> "\"database systems\""
-                "cs.HC" -> "\"human computer interaction\""
-                "cs.PL" -> "\"programming languages\""
-                "cs.SE" -> "\"software engineering\""
-
-                // Physics fields
-                "astro-ph" -> "\"astrophysics\""
-                "quant-ph" -> "\"quantum physics\""
-                "hep-th" -> "\"high energy physics\""
-                "nucl-th" -> "\"nuclear physics\""
-                "cond-mat" -> "\"condensed matter physics\""
-                "math-ph" -> "\"mathematical physics\""
-                "physics.app-ph" -> "\"applied physics\""
-                "physics.comp-ph" -> "\"computational physics\""
-
-                // Mathematics fields
-                "math.AG" -> "\"algebraic geometry\""
-                "math.GE" -> "\"geometry\""
-                "math.NT" -> "\"number theory\""
-                "math.AN" -> "\"mathematical analysis\""
-                "math.PR" -> "\"probability theory\""
-                "math.ST" -> "\"statistics\""
-                "math.LO" -> "\"mathematical logic\""
-                "math.CO" -> "\"combinatorics\""
-
-                // Default case: use the field name without the prefix
-                else -> "\"${field.substringAfter(".").replace(".", " ")}\""
+            // Convert arXiv category to appropriate Semantic Scholar field of study
+            val fieldOfStudy = when {
+                field.startsWith("cs.") -> "Computer Science"
+                field.startsWith("math.") -> "Mathematics"
+                field.startsWith("physics") || field.startsWith("astro") || 
+                field.startsWith("quant") || field.startsWith("hep") -> "Physics"
+                field.startsWith("cond-mat") -> "Materials Science"
+                field.startsWith("q-bio") || field.startsWith("bio") -> "Biology"
+                field.startsWith("q-fin") -> "Economics"
+                field.startsWith("stat") -> "Mathematics"  // Statistics falls under Mathematics
+                else -> "Computer Science"  // Default to Computer Science
             }
 
             // Build date filter
@@ -101,15 +76,16 @@ class SemanticScholarApi {
                 }
             } else ""
 
-            // Build URL with all necessary parameters - using the exact working format
-            val url = "$BASE_URL/paper/search/bulk?query=$rawQuery" +
+            // Build URL with all necessary parameters
+            val url = "$BASE_URL/paper/search/bulk?" +
+                     "fieldsOfStudy=$fieldOfStudy" +
                      "&fields=title,citationCount,externalIds,publicationDate,openAccessPdf,isOpenAccess" +
                      "&openAccessPdf" +
                      dateFilter +
                      "&sort=citationCount:desc" +
                      "&limit=$limit"
 
-            Log.d(TAG, "Making Semantic Scholar bulk request with query: $rawQuery")
+            Log.d(TAG, "Making Semantic Scholar bulk request for field: $fieldOfStudy")
             Log.d(TAG, "URL: $url")
             
             val request = Request.Builder()
@@ -132,25 +108,31 @@ class SemanticScholarApi {
             val total = jsonResponse.optInt("total", 0)
             Log.d(TAG, "Found $total total papers, fetched ${papers.length()} papers")
 
-            val arxivIds = mutableListOf<String>()
+            val arxivPapers = mutableListOf<String>()
+            
             for (i in 0 until papers.length()) {
                 val paper = papers.getJSONObject(i)
-                val citationCount = paper.optInt("citationCount", 0)
-                val externalIds = paper.optJSONObject("externalIds")
-                val publicationDate = paper.optString("publicationDate", "")
-                val title = paper.optString("title", "")
-                val isOpenAccess = paper.optBoolean("isOpenAccess", false)
-                val openAccessPdf = paper.optJSONObject("openAccessPdf")
                 
-                if (externalIds != null && externalIds.has("ArXiv")) {
-                    val arxivId = externalIds.getString("ArXiv")
-                    Log.d(TAG, "Found paper: '$title' with arXiv ID: $arxivId, citations: $citationCount, date: $publicationDate, isOpenAccess: $isOpenAccess")
-                    arxivIds.add(arxivId)
+                // First try to get arXiv ID from externalIds
+                val externalIds = paper.optJSONObject("externalIds")
+                if (externalIds?.has("ArXiv") == true) {
+                    arxivPapers.add(externalIds.getString("ArXiv"))
+                    continue
+                }
+                
+                // If no ArXiv ID in externalIds, try to extract from PDF URL
+                val openAccessPdf = paper.optJSONObject("openAccessPdf")
+                val pdfUrl = openAccessPdf?.optString("url", "")
+                if (pdfUrl?.contains("arxiv.org") == true) {
+                    // Extract arXiv ID from URL
+                    // URL format: http://arxiv.org/pdf/2305.06488
+                    val arxivId = pdfUrl.substringAfterLast("/").removeSuffix(".pdf")
+                    arxivPapers.add(arxivId)
                 }
             }
-
-            Log.d(TAG, "Found ${arxivIds.size} arXiv papers from Semantic Scholar")
-            arxivIds
+            
+            Log.d(TAG, "Found ${arxivPapers.size} arXiv papers with IDs: $arxivPapers")
+            arxivPapers
         } catch (e: Exception) {
             Log.e(TAG, "Error searching top papers: ${e.message}")
             Log.e(TAG, "Stack trace: ${e.stackTraceToString()}")
