@@ -38,9 +38,9 @@ fun SplashScreen() {
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+                        Color.White,
+                        Color(0xFFF3E5F5),  // Light purple
+                        Color(0xFFE1BEE7)   // Medium purple
                     )
                 )
             ),
@@ -56,14 +56,14 @@ fun SplashScreen() {
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Bold
                 ),
-                color = MaterialTheme.colorScheme.secondary,
+                color = Color(0xFF4A148C),  // Deep Purple
                 modifier = Modifier.scale(scale)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Explore Research Papers",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
+                color = Color(0xFF6A1B9A)  // Dark Purple
             )
         }
     }
