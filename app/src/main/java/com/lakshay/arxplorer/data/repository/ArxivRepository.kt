@@ -60,11 +60,13 @@ class ArxivRepository {
     companion object {
         private var remainingPaperIds = listOf<String>()
         private var remainingNewPapers = listOf<ArxivPaper>()
+        private var currentMode = "new"  // Can be "new" or "top"
         private const val PAPERS_PER_PAGE = 5
         private const val INITIAL_BATCH_SIZE = 50
     }
 
     suspend fun fetchPapersForUserPreferences(userId: String): Result<List<ArxivPaper>> {
+        currentMode = "new"  // Set mode to new
         return try {
             Log.d(TAG, "Fetching preferences for user: $userId")
             // Get user preferences from Firestore
@@ -106,7 +108,7 @@ class ArxivRepository {
                                 val result = api.searchPapers(
                                     query = "cat:$categoryCode",
                                     maxResults = INITIAL_BATCH_SIZE,
-                                    sortBy = "lastUpdatedDate",
+                                    sortBy = "submittedDate",
                                     sortOrder = "descending"
                                 )
                                 Log.d(TAG, "Result for $categoryCode: ${result.getOrNull()?.size ?: 0} papers")
@@ -117,7 +119,7 @@ class ArxivRepository {
 
                 val papers: List<List<ArxivPaper>> = deferredPapers.awaitAll()
                 val allPapers: List<ArxivPaper> = papers.flatten()
-                    .sortedByDescending { it.updatedDate }
+                    .sortedByDescending { it.publishedDate }
                     .distinctBy { it.id }
 
                 // Store remaining papers for later
@@ -188,6 +190,7 @@ class ArxivRepository {
         userId: String,
         timePeriod: TimePeriod
     ): Result<List<ArxivPaper>> = coroutineScope {
+        currentMode = "top"  // Set mode to top
         try {
             // Get user preferences
             val preferencesDoc = firestore.collection("user_preferences")
@@ -296,54 +299,56 @@ class ArxivRepository {
     // Add a function to load more papers
     suspend fun loadMorePapers(userId: String): Result<List<ArxivPaper>> = coroutineScope {
         try {
-            // If we have remaining top paper IDs, load those first
-            if (remainingPaperIds.isNotEmpty()) {
-                val nextBatch = remainingPaperIds.take(20)
-                remainingPaperIds = remainingPaperIds.drop(20)
+            when (currentMode) {
+                "top" -> {
+                    if (remainingPaperIds.isEmpty()) {
+                        return@coroutineScope Result.success(emptyList())
+                    }
 
-                val query = nextBatch.joinToString(" OR ") { "id:$it" }
-                Log.d(TAG, "Fetching next batch of arXiv papers with query: $query")
-                
-                val papers = api.searchPapers(
-                    query = query,
-                    maxResults = nextBatch.size
-                ).getOrNull() ?: emptyList()
+                    val nextBatch = remainingPaperIds.take(20)
+                    remainingPaperIds = remainingPaperIds.drop(20)
 
-                // Create a map of arXiv ID to paper
-                val paperMap = papers.associateBy { paper -> 
-                    // Extract ID from various possible formats
-                    when {
-                        paper.id.contains("/abs/") -> paper.id.substringAfter("/abs/")
-                        paper.id.contains("arXiv:") -> paper.id.substringAfter("arXiv:")
-                        else -> paper.id
-                    }.split("v").first() // Remove version number if present
-                }
+                    val query = nextBatch.joinToString(" OR ") { "id:$it" }
+                    Log.d(TAG, "Fetching next batch of top arXiv papers with query: $query")
+                    
+                    val papers = api.searchPapers(
+                        query = query,
+                        maxResults = nextBatch.size
+                    ).getOrNull() ?: emptyList()
 
-                Log.d(TAG, "Paper map contains ${paperMap.size} papers with IDs: ${paperMap.keys}")
-                
-                // Reorder papers according to Semantic Scholar order
-                val orderedPapers = nextBatch.mapNotNull { arxivId ->
-                    paperMap[arxivId].also { paper ->
-                        if (paper == null) {
-                            Log.w(TAG, "Could not find paper for arXiv ID: $arxivId")
-                        } else {
-                            Log.d(TAG, "Found paper for arXiv ID: $arxivId - ${paper.title}")
+                    // Create a map of arXiv ID to paper
+                    val paperMap = papers.associateBy { paper -> 
+                        // Extract ID from various possible formats
+                        when {
+                            paper.id.contains("/abs/") -> paper.id.substringAfter("/abs/")
+                            paper.id.contains("arXiv:") -> paper.id.substringAfter("arXiv:")
+                            else -> paper.id
+                        }.split("v").first() // Remove version number if present
+                    }
+
+                    // Reorder papers according to Semantic Scholar order
+                    val orderedPapers = nextBatch.mapNotNull { arxivId ->
+                        paperMap[arxivId].also { paper ->
+                            if (paper == null) {
+                                Log.w(TAG, "Could not find paper for arXiv ID: $arxivId")
+                            }
                         }
                     }
-                }
 
-                Log.d(TAG, "Returning ${orderedPapers.size} ordered papers")
-                Result.success(orderedPapers)
-            } else if (remainingNewPapers.isNotEmpty()) {
-                // Load next batch of new papers
-                val nextBatch = remainingNewPapers.take(PAPERS_PER_PAGE)
-                remainingNewPapers = remainingNewPapers.drop(PAPERS_PER_PAGE)
-                Log.d(TAG, "Loading next ${nextBatch.size} new papers, ${remainingNewPapers.size} remaining")
-                Result.success(nextBatch)
-            } else {
-                // No more papers to load
-                Log.d(TAG, "No more papers to load")
-                Result.success(emptyList())
+                    Log.d(TAG, "Returning ${orderedPapers.size} ordered papers")
+                    Result.success(orderedPapers)
+                }
+                "new" -> {
+                    if (remainingNewPapers.isEmpty()) {
+                        return@coroutineScope Result.success(emptyList())
+                    }
+                    // Load next batch of new papers from our stored list
+                    val nextBatch = remainingNewPapers.take(PAPERS_PER_PAGE)
+                    remainingNewPapers = remainingNewPapers.drop(PAPERS_PER_PAGE)
+                    Log.d(TAG, "Loading next ${nextBatch.size} new papers, ${remainingNewPapers.size} remaining")
+                    Result.success(nextBatch)
+                }
+                else -> Result.success(emptyList())
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error loading more papers", e)

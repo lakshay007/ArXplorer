@@ -47,7 +47,15 @@ class HomeViewModel : ViewModel() {
             return
         }
 
-        loadPapers()
+        // Load new papers by default
+        repository.fetchPapersForUserPreferences(userId).fold(
+            onSuccess = { papers ->
+                _uiState.value = UiState.Success(papers)
+            },
+            onFailure = { error ->
+                _uiState.value = UiState.Error(error.message ?: "Unknown error")
+            }
+        )
     }
 
     fun loadPapers() {
@@ -93,6 +101,7 @@ class HomeViewModel : ViewModel() {
     fun refreshPapers() {
         viewModelScope.launch {
             _showPreferencesScreen.value = false
+            _uiState.value = UiState.Loading
             checkPreferencesAndLoadPapers()
         }
     }

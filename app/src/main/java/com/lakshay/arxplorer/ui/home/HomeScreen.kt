@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -309,15 +310,18 @@ fun HomeScreen(
                     .padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                var selectedFilter by remember { mutableStateOf("new") }
+                var selectedFilter by rememberSaveable { mutableStateOf("new") }
                 var showTopMenu by remember { mutableStateOf(false) }
+                val isLoading = uiState is UiState.Loading
 
                 // New chip
                 FilterChip(
                     selected = selectedFilter == "new",
                     onClick = { 
-                        selectedFilter = "new"
-                        viewModel.refreshPapers()
+                        if (!isLoading) {  // Prevent clicking while loading
+                            selectedFilter = "new"
+                            viewModel.refreshPapers()
+                        }
                     },
                     label = { Text("New on ArXiv") },
                     colors = FilterChipDefaults.filterChipColors(
@@ -331,8 +335,12 @@ fun HomeScreen(
                 // Top chip with dropdown
                 Box {
                     FilterChip(
-                        selected = selectedFilter.startsWith("top"),
-                        onClick = { showTopMenu = true },
+                        selected = selectedFilter.startsWith("top_", ignoreCase = true),
+                        onClick = { 
+                            if (!isLoading) {  // Prevent clicking while loading
+                                showTopMenu = true 
+                            }
+                        },
                         label = {
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
