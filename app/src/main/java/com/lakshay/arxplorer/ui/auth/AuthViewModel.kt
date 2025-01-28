@@ -21,12 +21,12 @@ class AuthViewModel : ViewModel() {
     init {
         checkAuthState()
 
-        // Listen for Firebase auth state changes
+        
         auth.addAuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
             Log.d(TAG, "Auth state changed: ${user?.displayName}")
             if (user != null) {
-                // Get fresh ID token to ensure it's valid
+               
                 viewModelScope.launch {
                     try {
                         user.getIdToken(true).await()
@@ -48,7 +48,7 @@ class AuthViewModel : ViewModel() {
         if (currentUser != null) {
             viewModelScope.launch {
                 try {
-                    // Force token refresh on initial check
+                 
                     currentUser.getIdToken(true).await()
                     _authState.value = AuthState.Authenticated(currentUser.displayName ?: "User")
                 } catch (e: Exception) {

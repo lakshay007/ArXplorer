@@ -45,7 +45,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val showPreferences by viewModel.showPreferencesScreen.collectAsState()
 
-    // Sort options
+  
     val sortByOptions = listOf(
         "All" to "all",
         "Title" to "title",
@@ -58,7 +58,7 @@ fun HomeScreen(
         "Ascending" to "ascending"
     )
 
-    // Function to perform search with current sort options
+    
     fun performSearch() {
         viewModel.searchPapers(
             query = searchQuery.trim(),

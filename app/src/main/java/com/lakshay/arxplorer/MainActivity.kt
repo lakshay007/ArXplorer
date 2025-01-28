@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Configure Google Sign In
+       
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(BuildConfig.WEB_CLIENT_ID)
             .requestEmail()
@@ -59,12 +59,12 @@ class MainActivity : ComponentActivity() {
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-        // Check for existing signed-in user and attempt silent sign-in
+        
         lifecycleScope.launch {
             try {
                 val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
                 if (account != null) {
-                    // Try silent sign-in to refresh token
+                 
                     val silentSignInResult = googleSignInClient.silentSignIn().await()
                     val idToken = silentSignInResult.idToken
                     if (idToken != null) {
@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Silent sign-in failed", e)
-                // Don't show error to user, they can still manually sign in
+              
             }
         }
 
@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
                 } else {
                     when (authState) {
                         is AuthState.Loading -> {
-                            // This case won't be visible due to splash screen
+                           
                         }
                         is AuthState.Authenticated -> {
                             ArXplorerApp(
@@ -122,7 +122,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         AuthState.Initial -> {
-                            // This case won't be visible due to splash screen
+                            
                         }
                     }
                 }
