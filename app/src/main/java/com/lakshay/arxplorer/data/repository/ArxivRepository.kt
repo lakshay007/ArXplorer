@@ -239,7 +239,7 @@ class ArxivRepository {
                 field = categoryCode,
                 fromDate = fromDate,
                 untilDate = untilDate,
-                limit = 100  // Get more papers but only use first 20 initially
+                limit = 100  //check
             )
 
             if (allPaperIds.isEmpty()) {

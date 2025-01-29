@@ -29,7 +29,8 @@ fun PaperCard(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = Color.White,
+            contentColor = Color.Black
         )
     ) {
         Column(
@@ -43,7 +44,8 @@ fun PaperCard(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                color = Color.Black
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -52,7 +54,7 @@ fun PaperCard(
             Text(
                 text = paper.authors.joinToString(", "),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Color.DarkGray,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -63,7 +65,7 @@ fun PaperCard(
             Text(
                 text = paper.abstract,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Color.DarkGray,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
@@ -79,14 +81,25 @@ fun PaperCard(
                 // Category chip
                 AssistChip(
                     onClick = { },
-                    label = { Text(paper.primaryCategory) },
+                    label = { 
+                        Text(
+                            text = paper.primaryCategory,
+                            color = Color.Black
+                        ) 
+                    },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Info,
                             contentDescription = null,
-                            modifier = Modifier.size(AssistChipDefaults.IconSize)
+                            modifier = Modifier.size(AssistChipDefaults.IconSize),
+                            tint = MaterialTheme.colorScheme.primary
                         )
-                    }
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = Color(0xFFF5F5F5),
+                        labelColor = Color.Black,
+                        leadingIconContentColor = MaterialTheme.colorScheme.primary
+                    )
                 )
 
                 // Date
@@ -98,13 +111,13 @@ fun PaperCard(
                         imageVector = Icons.Default.Info,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = paper.publishedDate.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color.DarkGray
                     )
                 }
             }

@@ -41,11 +41,13 @@ fun HomeScreen(
     var showSortOptions by remember { mutableStateOf(false) }
     var selectedSortBy by remember { mutableStateOf("all") }
     var selectedSortOrder by remember { mutableStateOf("descending") }
+    var selectedFilter by rememberSaveable { mutableStateOf("new") }
+    var showTopMenu by remember { mutableStateOf(false) }
     val greeting = remember { getGreeting() }
     val uiState by viewModel.uiState.collectAsState()
     val showPreferences by viewModel.showPreferencesScreen.collectAsState()
+    val isLoading = uiState is UiState.Loading
 
-  
     val sortByOptions = listOf(
         "All" to "all",
         "Title" to "title",
@@ -134,173 +136,166 @@ fun HomeScreen(
             }
             
             // Search bar with sort button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SearchBar(
-                    query = searchQuery,
-                    onQueryChange = { searchQuery = it },
-                    onSearch = { performSearch() },
-                    active = false,
-                    onActiveChange = {},
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = darkPurple
-                        )
-                    },
-                    placeholder = {
-                        Text(
-                            text = "Search papers...",
-                            color = darkPurple.copy(alpha = 0.6f),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 56.dp)
-                        .clip(RoundedCornerShape(28.dp)),
-                    colors = SearchBarDefaults.colors(
-                        containerColor = Color.White.copy(alpha = 0.9f),
-                        dividerColor = Color.Transparent
+            SearchBar(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                onSearch = { performSearch() },
+                active = false,
+                onActiveChange = {},
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = darkPurple
                     )
-                ) {
-                    // Search suggestions will go here
-                }
-
-                // Sort button with custom icon
-                Box(
-                    modifier = Modifier
-                        .height(56.dp)  // Match SearchBar height
-                        .aspectRatio(1f) 
-                        .padding(top = 25.dp) // Keep it square
-                ) {
-                    IconButton(
-                        onClick = { showSortOptions = true },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(28.dp))
-                            .background(Color.White.copy(alpha = 0.9f))
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.size(24.dp)
+                },
+                trailingIcon = {
+                    Box {
+                        IconButton(
+                            onClick = { showSortOptions = true },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(
+                                    color = lightPurple.copy(alpha = 0.7f),
+                                    shape = RoundedCornerShape(18.dp)
+                                )
+                                .padding(8.dp)
                         ) {
-                            // First line with end circle
-                            Row(
-                                modifier = Modifier.width(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxSize()
                             ) {
-                                // Line
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(2.dp)
-                                        .background(darkPurple)
-                                )
-                                // End circle
-                                Box(
-                                    modifier = Modifier
-                                        .size(4.dp)
-                                        .background(Color.White, RoundedCornerShape(2.dp))
-                                        .border(1.dp, darkPurple, RoundedCornerShape(2.dp))
+                                // First line with end circle
+                                Row(
+                                    modifier = Modifier.width(14.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Line
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(2.dp)
+                                            .background(darkPurple.copy(alpha = 0.8f))
+                                    )
+                                    // End circle
+                                    Box(
+                                        modifier = Modifier
+                                            .size(4.dp)
+                                            .background(Color.White, RoundedCornerShape(2.dp))
+                                            .border(1.dp, darkPurple.copy(alpha = 0.8f), RoundedCornerShape(2.dp))
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.height(3.dp))
+                                
+                                // Second line with start circle
+                                Row(
+                                    modifier = Modifier.width(14.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Start circle
+                                    Box(
+                                        modifier = Modifier
+                                            .size(4.dp)
+                                            .background(Color.White, RoundedCornerShape(2.dp))
+                                            .border(1.dp, darkPurple.copy(alpha = 0.8f), RoundedCornerShape(2.dp))
+                                    )
+                                    // Line
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(2.dp)
+                                            .background(darkPurple.copy(alpha = 0.8f))
+                                    )
+                                }
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = showSortOptions,
+                            onDismissRequest = { showSortOptions = false },
+                            modifier = Modifier
+                                .background(color = Color.White.copy(alpha = 0.95f))
+                                .width(200.dp)
+                        ) {
+                            Text(
+                                text = "Sort By",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = darkPurple,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                            sortByOptions.forEach { (label, value) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        selectedSortBy = value
+                                        showSortOptions = false
+                                        performSearch()
+                                    },
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = darkPurple
+                                    ),
+                                    modifier = Modifier.background(
+                                        if (selectedSortBy == value) lightPurple else Color.Transparent
+                                    )
                                 )
                             }
-                            
-                            Spacer(modifier = Modifier.height(4.dp))
-                            
-                            // Second line with start circle
-                            Row(
-                                modifier = Modifier.width(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Start circle
-                                Box(
-                                    modifier = Modifier
-                                        .size(4.dp)
-                                        .background(Color.White, RoundedCornerShape(2.dp))
-                                        .border(1.dp, darkPurple, RoundedCornerShape(2.dp))
-                                )
-                                // Line
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(2.dp)
-                                        .background(darkPurple)
+
+                            Divider(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                color = darkPurple.copy(alpha = 0.1f)
+                            )
+
+                            Text(
+                                text = "Sort Order",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = darkPurple,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                            sortOrderOptions.forEach { (label, value) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        selectedSortOrder = value
+                                        showSortOptions = false
+                                        performSearch()
+                                    },
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = darkPurple
+                                    ),
+                                    modifier = Modifier.background(
+                                        if (selectedSortOrder == value) lightPurple else Color.Transparent
+                                    )
                                 )
                             }
                         }
                     }
-
-                    DropdownMenu(
-                        expanded = showSortOptions,
-                        onDismissRequest = { showSortOptions = false },
-                        modifier = Modifier
-                            .background(
-                                color = Color.White.copy(alpha = 0.95f),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .width(200.dp)
-                    ) {
-                        Text(
-                            text = "Sort By",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = darkPurple,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                        sortByOptions.forEach { (label, value) ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = {
-                                    selectedSortBy = value
-                                    showSortOptions = false
-                                    performSearch()
-                                },
-                                colors = MenuDefaults.itemColors(
-                                    textColor = darkPurple
-                                ),
-                                modifier = Modifier.background(
-                                    if (selectedSortBy == value) lightPurple else Color.Transparent
-                                )
-                            )
-                        }
-
-                        Divider(
-                            modifier = Modifier.padding(vertical = 4.dp),
-                            color = darkPurple.copy(alpha = 0.1f)
-                        )
-
-                        Text(
-                            text = "Sort Order",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = darkPurple,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                        sortOrderOptions.forEach { (label, value) ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = {
-                                    selectedSortOrder = value
-                                    showSortOptions = false
-                                    performSearch()
-                                },
-                                colors = MenuDefaults.itemColors(
-                                    textColor = darkPurple
-                                ),
-                                modifier = Modifier.background(
-                                    if (selectedSortOrder == value) lightPurple else Color.Transparent
-                                )
-                            )
-                        }
-                    }
-                }
+                },
+                placeholder = {
+                    Text(
+                        text = "Search papers...",
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp)
+                    .clip(RoundedCornerShape(28.dp)),
+                colors = SearchBarDefaults.colors(
+                    containerColor = Color.White.copy(alpha = 0.9f),
+                    dividerColor = Color.Transparent,
+                    inputFieldColors = TextFieldDefaults.colors(
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        cursorColor = darkPurple
+                    )
+                )
+            ) {
+                // Search suggestions will go here
             }
 
             // Filter chips
@@ -310,10 +305,6 @@ fun HomeScreen(
                     .padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                var selectedFilter by rememberSaveable { mutableStateOf("new") }
-                var showTopMenu by remember { mutableStateOf(false) }
-                val isLoading = uiState is UiState.Loading
-
                 // New chip
                 FilterChip(
                     selected = selectedFilter == "new",
@@ -367,8 +358,7 @@ fun HomeScreen(
                         onDismissRequest = { showTopMenu = false },
                         modifier = Modifier
                             .background(
-                                color = Color.White.copy(alpha = 0.95f),
-                                shape = RoundedCornerShape(12.dp)
+                                color = Color.White.copy(alpha = 0.95f)
                             )
                     ) {
                         val menuItems = listOf(
