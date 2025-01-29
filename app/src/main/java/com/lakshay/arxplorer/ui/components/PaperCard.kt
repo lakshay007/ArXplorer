@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,12 +16,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.lakshay.arxplorer.data.model.ArxivPaper
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lakshay.arxplorer.viewmodel.ChatViewModel
 import com.lakshay.arxplorer.viewmodel.ChatViewModelFactory
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,11 +42,32 @@ fun PaperCard(
 
     var showDialog by remember { mutableStateOf(false) }
     var isAiChat by remember { mutableStateOf(false) }
+    var showSizeLimitDialog by remember { mutableStateOf(false) }
+    var isCheckingSize by remember { mutableStateOf(false) }
+    
+    val coroutineScope = rememberCoroutineScope()
+    val client = remember { OkHttpClient() }
     
     // Initialize ViewModel
     val chatViewModel: ChatViewModel = viewModel(
         factory = ChatViewModelFactory.getInstance()
     )
+
+    // Function to check paper size
+    suspend fun getPaperSize(url: String): Long = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url(url)
+                .head()  // Use HEAD request to only get headers
+                .build()
+            
+            client.newCall(request).execute().use { response ->
+                response.header("content-length")?.toLongOrNull() ?: 0L
+            }
+        } catch (e: Exception) {
+            0L
+        }
+    }
 
     if (showDialog) {
         AiPaperBottomSheet(
@@ -48,10 +76,83 @@ fun PaperCard(
             viewModel = chatViewModel,
             onDismiss = { 
                 showDialog = false
-                // Clear chat when dialog is dismissed
                 chatViewModel.clearChat()
             }
         )
+    }
+
+    if (showSizeLimitDialog) {
+        Dialog(onDismissRequest = { showSizeLimitDialog = false }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.WorkspacePremium,
+                        contentDescription = null,
+                        tint = deepPurple,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Unlock Full Paper Analysis",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = deepPurple,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "This paper is a bit too large for our free tier. We're working on a premium version that'll handle papers of any size! 🚀",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.DarkGray
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    TextButton(
+                        onClick = { showSizeLimitDialog = false },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = deepPurple
+                        )
+                    ) {
+                        Text("Cool, got it!")
+                    }
+                }
+            }
+        }
+    }
+
+    // Function to handle AI feature clicks
+    fun handleAiFeatureClick(isChat: Boolean) {
+        if (isCheckingSize) return
+        
+        coroutineScope.launch {
+            isCheckingSize = true
+            val size = getPaperSize(paper.pdfUrl)
+            isCheckingSize = false
+            
+            if (size > 17 * 1024 * 1024) { // 17 MB in bytes
+                showSizeLimitDialog = true
+            } else {
+                isAiChat = isChat
+                showDialog = true
+            }
+        }
     }
 
     Card(
@@ -149,45 +250,61 @@ fun PaperCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Summary button
+                // AI Chat button
                 FilledTonalButton(
-                    onClick = { 
-                        isAiChat = false
-                        showDialog = true
-                    },
-                    modifier = Modifier.weight(1f),
+                    onClick = { handleAiFeatureClick(true) },
+                    enabled = !isCheckingSize,
+                    modifier = Modifier.weight(0.7f),
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = deepPurple.copy(alpha = 0.1f),
-                        contentColor = deepPurple
+                        contentColor = deepPurple,
+                        disabledContainerColor = deepPurple.copy(alpha = 0.05f),
+                        disabledContentColor = deepPurple.copy(alpha = 0.5f)
                     ),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Summarize,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    if (isCheckingSize) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = deepPurple,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Summarize")
+                    Text("Ask AI about this")
                 }
 
-                // AI Chat button
+                // Summary button
                 FilledTonalIconButton(
-                    onClick = { 
-                        isAiChat = true
-                        showDialog = true
-                    },
+                    onClick = { handleAiFeatureClick(false) },
+                    enabled = !isCheckingSize,
                     modifier = Modifier.size(40.dp),
                     colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = darkPurple.copy(alpha = 0.1f),
-                        contentColor = darkPurple
+                        containerColor = lightPurple.copy(alpha = 0.5f),
+                        contentColor = deepPurple.copy(alpha = 0.7f),
+                        disabledContainerColor = lightPurple.copy(alpha = 0.3f),
+                        disabledContentColor = deepPurple.copy(alpha = 0.3f)
                     )
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = "Chat with AI",
-                        modifier = Modifier.size(20.dp)
-                    )
+                    if (isCheckingSize) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = deepPurple,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Summarize,
+                            contentDescription = "Summarize",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }
