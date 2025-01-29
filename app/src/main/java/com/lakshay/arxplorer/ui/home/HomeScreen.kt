@@ -152,16 +152,23 @@ fun HomeScreen(
                 trailingIcon = {
                     Box {
                         IconButton(
-                            onClick = { showSortOptions = true }
+                            onClick = { showSortOptions = true },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(
+                                    color = lightPurple.copy(alpha = 0.7f),
+                                    shape = RoundedCornerShape(18.dp)
+                                )
+                                .padding(8.dp)
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.fillMaxSize()
                             ) {
                                 // First line with end circle
                                 Row(
-                                    modifier = Modifier.width(16.dp),
+                                    modifier = Modifier.width(14.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -170,22 +177,22 @@ fun HomeScreen(
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(2.dp)
-                                            .background(darkPurple)
+                                            .background(darkPurple.copy(alpha = 0.8f))
                                     )
                                     // End circle
                                     Box(
                                         modifier = Modifier
                                             .size(4.dp)
                                             .background(Color.White, RoundedCornerShape(2.dp))
-                                            .border(1.dp, darkPurple, RoundedCornerShape(2.dp))
+                                            .border(1.dp, darkPurple.copy(alpha = 0.8f), RoundedCornerShape(2.dp))
                                     )
                                 }
                                 
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(3.dp))
                                 
                                 // Second line with start circle
                                 Row(
-                                    modifier = Modifier.width(16.dp),
+                                    modifier = Modifier.width(14.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -194,14 +201,14 @@ fun HomeScreen(
                                         modifier = Modifier
                                             .size(4.dp)
                                             .background(Color.White, RoundedCornerShape(2.dp))
-                                            .border(1.dp, darkPurple, RoundedCornerShape(2.dp))
+                                            .border(1.dp, darkPurple.copy(alpha = 0.8f), RoundedCornerShape(2.dp))
                                     )
                                     // Line
                                     Box(
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(2.dp)
-                                            .background(darkPurple)
+                                            .background(darkPurple.copy(alpha = 0.8f))
                                     )
                                 }
                             }
