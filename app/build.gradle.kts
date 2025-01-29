@@ -1,8 +1,15 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+}
+
+val localProperties = Properties().apply {
+    load(FileInputStream(rootProject.file("local.properties")))
 }
 
 android {
@@ -11,7 +18,7 @@ android {
 
     defaultConfig {
         applicationId = "com.lakshay.arxplorer"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -21,6 +28,13 @@ android {
         
         // Add your web client ID from google-services.json
         buildConfigField("String", "WEB_CLIENT_ID", "\"1055780860699-9fr31ou33pe1q0vrqi580obv4862l796.apps.googleusercontent.com\"")
+        
+        // Get Gemini API key from local.properties
+        buildConfigField(
+            "String",
+            "GEMINI_API_KEY",
+            "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\""
+        )
 
         // Drop MIPS support
         ndk {
@@ -82,7 +96,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.5.4")
     
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:32.7.2"))
+    implementation(platform("com.google.firebase:firebase-bom:33.8.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore")
@@ -112,6 +126,16 @@ dependencies {
 
     // Add lifecycle-runtime-ktx dependency
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+
+    // Google AI Gemini
+    implementation("com.google.ai.client.generativeai:generativeai:0.1.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Import the BoM for the Firebase platform
+    implementation(platform("com.google.firebase:firebase-bom:33.8.0"))
+
+    // Add the dependency for the Vertex AI in Firebase library
+    implementation("com.google.firebase:firebase-vertexai")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
