@@ -35,8 +35,11 @@ class HomeViewModel @Inject constructor(
     private val _isLoadingMore = MutableStateFlow(false)
     val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
     private val _commentCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
-    val commentCounts: StateFlow<Map<String, Int>> = _commentCounts
+    val commentCounts: StateFlow<Map<String, Int>> = _commentCounts.asStateFlow()
 
     private var currentMode = "new"  // Track current mode
 
@@ -170,19 +173,25 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refreshPapers() {
-        _commentCounts.value = emptyMap()
-        _showPreferencesScreen.value = false
         viewModelScope.launch {
-            // Clear any remaining papers before refreshing
-            arxivRepository.clearRemainingPapers()
-            
-            if (currentMode == "top") {
-                // Re-fetch top papers with current time period
-                loadTopPapers(TimePeriod.THIS_WEEK) // Default to THIS_WEEK when refreshing top papers
-            } else {
-                // For new papers, use fetchPapersForUserPreferences
-                currentMode = "new"
-                checkPreferencesAndLoadPapers()
+            _isRefreshing.value = true
+            try {
+                _commentCounts.value = emptyMap()
+                _showPreferencesScreen.value = false
+                
+                // Clear any remaining papers before refreshing
+                arxivRepository.clearRemainingPapers()
+                
+                if (currentMode == "top") {
+                    // Re-fetch top papers with current time period
+                    loadTopPapers(TimePeriod.THIS_WEEK) // Default to THIS_WEEK when refreshing top papers
+                } else {
+                    // For new papers, use fetchPapersForUserPreferences
+                    currentMode = "new"
+                    checkPreferencesAndLoadPapers()
+                }
+            } finally {
+                _isRefreshing.value = false
             }
         }
     }

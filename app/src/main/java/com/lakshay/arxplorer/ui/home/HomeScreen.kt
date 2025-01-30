@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
@@ -51,6 +52,7 @@ fun HomeScreen(
     val showPreferences by viewModel.showPreferencesScreen.collectAsState()
     val isLoading = uiState is UiState.Loading
     val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val commentCounts by viewModel.commentCounts.collectAsState()
 
     val sortByOptions = listOf(
@@ -429,19 +431,27 @@ fun HomeScreen(
                     }
                 }
                 is UiState.Success -> {
+                    val listState = rememberLazyListState()
+                    
                     SwipeRefresh(
-                        state = rememberSwipeRefreshState(false),
-                        onRefresh = { viewModel.refreshPapers() },
+                        state = rememberSwipeRefreshState(isRefreshing),
+                        onRefresh = { 
+                            viewModel.refreshPapers()
+                        },
                         modifier = Modifier.fillMaxSize()
                     ) {
                         LazyColumn(
+                            state = listState,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             contentPadding = PaddingValues(vertical = 16.dp)
                         ) {
-                            items(state.data) { paper ->
+                            items(
+                                items = state.data,
+                                key = { paper -> paper.id }  // Add key for stable item identity
+                            ) { paper ->
                                 PaperCard(
                                     paper = paper,
                                     onClick = { onPaperClick(paper) },
