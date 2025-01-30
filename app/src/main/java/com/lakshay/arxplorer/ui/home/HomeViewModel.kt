@@ -216,10 +216,11 @@ class HomeViewModel @Inject constructor(
                 )
                 result.fold(
                     onSuccess = { papers ->
-                        _uiState.value = if (papers.isEmpty()) {
-                            UiState.Empty
+                        if (papers.isEmpty()) {
+                            _uiState.value = UiState.Empty
                         } else {
-                            UiState.Success(papers)
+                            _uiState.value = UiState.Success(papers)
+                            loadCommentCounts(papers)
                         }
                     },
                     onFailure = { error ->
