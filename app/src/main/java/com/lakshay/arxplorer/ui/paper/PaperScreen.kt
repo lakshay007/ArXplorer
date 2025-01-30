@@ -38,16 +38,17 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaperScreen(
-    paper: ArxivPaper,
     onBackClick: () -> Unit,
     onDownloadClick: (String) -> Unit,
     onShareClick: (ArxivPaper) -> Unit,
-    modifier: Modifier = Modifier
+    viewModel: PaperViewModel = hiltViewModel()
 ) {
+    val paper by viewModel.currentPaper.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(true) }
@@ -64,208 +65,181 @@ fun PaperScreen(
         }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures {
-                    showControls = true
+    paper?.let { currentPaper ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        showControls = true
+                    }
                 }
-            }
-    ) {
-        if (showAbstract) {
-            // Abstract View
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = paper.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = paper.authors.joinToString(", "),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Abstract",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = paper.abstract,
-                    style = MaterialTheme.typography.bodyMedium,
-                    lineHeight = 24.sp
-                )
-                if (paper.doi != null || paper.journalRef != null || paper.commentaries != null) {
+        ) {
+            if (showAbstract) {
+                // Abstract View
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = currentPaper.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = currentPaper.authors.joinToString(", "),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Additional Information",
+                        text = "Abstract",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    paper.doi?.let {
-                        Text(
-                            text = "DOI: $it",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-                    paper.journalRef?.let {
-                        Text(
-                            text = "Journal Reference: $it",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-                    paper.commentaries?.let {
-                        Text(
-                            text = "Comments: $it",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            }
-        } else {
-            // PDF Viewer
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                AndroidView(
-                    factory = { context ->
-                        PDFView(context, null).apply {
-                            layoutParams = FrameLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT
-                            )
-                            setOnClickListener {
-                                showControls = true
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                    update = { pdfView ->
-                        coroutineScope.launch {
-                            try {
-                                val file = downloadPdf(context, paper.pdfUrl)
-                                withContext(Dispatchers.Main) {
-                                    pdfView.fromFile(file)
-                                        .enableSwipe(true)
-                                        .swipeHorizontal(false)
-                                        .enableDoubletap(true)
-                                        .enableAnnotationRendering(true)
-                                        .spacing(0)
-                                        .autoSpacing(false)
-                                        .pageFitPolicy(com.github.barteksc.pdfviewer.util.FitPolicy.WIDTH)
-                                        .pageSnap(true)
-                                        .pageFling(true)
-                                        .nightMode(false)
-                                        .defaultPage(0)
-                                        .onLoad {
-                                            isLoading = false
-                                            Log.d("PaperScreen", "PDF loaded successfully")
-                                        }
-                                        .onError { t ->
-                                            isLoading = false
-                                            error = "Failed to load PDF: ${t.message}"
-                                            Log.e("PaperScreen", "Failed to load PDF", t)
-                                        }
-                                        .onPageError { page, t ->
-                                            Log.e("PaperScreen", "Error on page $page", t)
-                                        }
-                                        .load()
-                                }
-                            } catch (e: Exception) {
-                                withContext(Dispatchers.Main) {
-                                    isLoading = false
-                                    error = "Failed to download PDF: ${e.message}"
-                                }
-                            }
-                        }
-                    }
-                )
-
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(48.dp),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-
-                error?.let {
                     Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(16.dp)
+                        text = currentPaper.abstract,
+                        style = MaterialTheme.typography.bodyMedium,
+                        lineHeight = 24.sp
                     )
                 }
-            }
-        }
-
-        // Floating controls
-        AnimatedVisibility(
-            visible = showControls,
-            enter = slideInVertically() + fadeIn(),
-            exit = slideOutVertically() + fadeOut(),
-            modifier = Modifier.align(Alignment.TopCenter)
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                tonalElevation = 3.dp
-            ) {
-                Row(
+            } else {
+                // PDF Viewer
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surface)
                 ) {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            modifier = Modifier.size(24.dp)
+                    AndroidView(
+                        factory = { context ->
+                            PDFView(context, null).apply {
+                                layoutParams = FrameLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                                setOnClickListener {
+                                    showControls = true
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                        update = { pdfView ->
+                            coroutineScope.launch {
+                                try {
+                                    val file = downloadPdf(context, currentPaper.pdfUrl)
+                                    withContext(Dispatchers.Main) {
+                                        pdfView.fromFile(file)
+                                            .enableSwipe(true)
+                                            .swipeHorizontal(false)
+                                            .enableDoubletap(true)
+                                            .enableAnnotationRendering(true)
+                                            .spacing(0)
+                                            .autoSpacing(false)
+                                            .pageFitPolicy(com.github.barteksc.pdfviewer.util.FitPolicy.WIDTH)
+                                            .pageSnap(true)
+                                            .pageFling(true)
+                                            .nightMode(false)
+                                            .defaultPage(0)
+                                            .onLoad {
+                                                isLoading = false
+                                                Log.d("PaperScreen", "PDF loaded successfully")
+                                            }
+                                            .onError { t ->
+                                                isLoading = false
+                                                error = "Failed to load PDF: ${t.message}"
+                                                Log.e("PaperScreen", "Failed to load PDF", t)
+                                            }
+                                            .onPageError { page, t ->
+                                                Log.e("PaperScreen", "Error on page $page", t)
+                                            }
+                                            .load()
+                                    }
+                                } catch (e: Exception) {
+                                    withContext(Dispatchers.Main) {
+                                        isLoading = false
+                                        error = "Failed to download PDF: ${e.message}"
+                                    }
+                                }
+                            }
+                        }
+                    )
+
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(48.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    error?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(16.dp)
                         )
                     }
-                    
+                }
+            }
+
+            // Floating controls
+            AnimatedVisibility(
+                visible = showControls,
+                enter = slideInVertically() + fadeIn(),
+                exit = slideOutVertically() + fadeOut(),
+                modifier = Modifier.align(Alignment.TopCenter)
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    tonalElevation = 3.dp
+                ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { showAbstract = !showAbstract }) {
+                        IconButton(onClick = onBackClick) {
                             Icon(
-                                if (showAbstract) Icons.Default.Description else Icons.Default.Info,
-                                contentDescription = if (showAbstract) "Show PDF" else "Show Abstract"
+                                Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                modifier = Modifier.size(24.dp)
                             )
                         }
-                        IconButton(onClick = { onDownloadClick(paper.pdfUrl) }) {
-                            Icon(
-                                Icons.Default.Download,
-                                contentDescription = "Download PDF"
-                            )
-                        }
-                        IconButton(onClick = { onShareClick(paper) }) {
-                            Icon(
-                                Icons.Default.Share,
-                                contentDescription = "Share"
-                            )
+                        
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            IconButton(onClick = { showAbstract = !showAbstract }) {
+                                Icon(
+                                    if (showAbstract) Icons.Default.Description else Icons.Default.Info,
+                                    contentDescription = if (showAbstract) "Show PDF" else "Show Abstract"
+                                )
+                            }
+                            IconButton(onClick = { onDownloadClick(currentPaper.pdfUrl) }) {
+                                Icon(
+                                    Icons.Default.Download,
+                                    contentDescription = "Download PDF"
+                                )
+                            }
+                            IconButton(onClick = { onShareClick(currentPaper) }) {
+                                Icon(
+                                    Icons.Default.Share,
+                                    contentDescription = "Share"
+                                )
+                            }
                         }
                     }
                 }

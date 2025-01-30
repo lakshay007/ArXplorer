@@ -58,8 +58,8 @@ class ArxivRepository {
 
     // Add a companion object to store the remaining papers
     companion object {
-        private var remainingPaperIds = listOf<String>()
         private var remainingNewPapers = listOf<ArxivPaper>()
+        private var remainingPaperIds = listOf<String>()
         private var currentMode = "new"  // Can be "new" or "top"
         private const val PAPERS_PER_PAGE = 5
         private const val INITIAL_BATCH_SIZE = 50
@@ -94,7 +94,7 @@ class ArxivRepository {
 
             Log.d(TAG, "Found preferences: $preferences")
 
-            // Fetch papers for each preference in parallel with a small delay between requests
+            // Fetch papers for each preference in parallel
             coroutineScope {
                 val deferredPapers: List<Deferred<List<ArxivPaper>>> = preferences
                     .mapNotNull { preference ->
@@ -105,6 +105,7 @@ class ArxivRepository {
                         } else {
                             async {
                                 Log.d(TAG, "Fetching papers for category: $categoryCode (from: $preference)")
+                                // For new papers, we directly use ArxivApi with submittedDate sorting
                                 val result = api.searchPapers(
                                     query = "cat:$categoryCode",
                                     maxResults = INITIAL_BATCH_SIZE,
@@ -142,11 +143,18 @@ class ArxivRepository {
     }
 
     suspend fun fetchPaperDetails(paperId: String): Result<ArxivPaper> {
-        return api.searchPapers(
-            query = "id:$paperId",
-            maxResults = 1
-        ).map { papers ->
-            papers.firstOrNull() ?: throw Exception("Paper not found")
+        return try {
+            api.searchPapers(
+                query = paperId,
+                maxResults = 1,
+                sortBy = "submittedDate",
+                sortOrder = "descending",
+                isIdQuery = true
+            ).map { papers ->
+                papers.firstOrNull() ?: throw Exception("Paper not found")
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -239,51 +247,40 @@ class ArxivRepository {
                 field = categoryCode,
                 fromDate = fromDate,
                 untilDate = untilDate,
-                limit = 100  //check
+                limit = 100
             )
 
-            if (allPaperIds.isEmpty()) {
-                return@coroutineScope Result.success(emptyList())
-            }
-
-            // Store remaining papers for later use
-            remainingPaperIds = if (allPaperIds.size > 20) {
-                allPaperIds.subList(20, allPaperIds.size)
+            // Store remaining IDs for pagination
+            if (allPaperIds.size > PAPERS_PER_PAGE) {
+                remainingPaperIds = allPaperIds.drop(PAPERS_PER_PAGE)
+                Log.d(TAG, "Stored ${remainingPaperIds.size} paper IDs for later loading")
             } else {
-                emptyList()
+                remainingPaperIds = emptyList()
             }
 
-            // Only fetch first 20 papers from arXiv
-            val initialPaperIds = allPaperIds.take(20)
-            val query = initialPaperIds.joinToString(" OR ") { "id:$it" }
-            Log.d(TAG, "Fetching first 20 arXiv papers with query: $query")
-            
-            val papers = api.searchPapers(
-                query = query,
-                maxResults = initialPaperIds.size,
-                sortBy = "submittedDate",  // Remove sorting here as we'll sort manually
-                sortOrder = "descending"
-            ).getOrNull() ?: emptyList()
-
-            // Create a map of arXiv ID to paper
-            val paperMap = papers.associateBy { paper -> 
-                // Extract ID from various possible formats
-                when {
-                    paper.id.contains("/abs/") -> paper.id.substringAfter("/abs/")
-                    paper.id.contains("arXiv:") -> paper.id.substringAfter("arXiv:")
-                    else -> paper.id
-                }.split("v").first() // Remove version number if present
+            // Get papers for first batch
+            val paperMap = mutableMapOf<String, ArxivPaper>()
+            allPaperIds.take(PAPERS_PER_PAGE).forEach { arxivId ->
+                try {
+                    val paper = api.searchPapers(
+                        query = arxivId,
+                        maxResults = 1,
+                        isIdQuery = true
+                    ).getOrNull()?.firstOrNull()
+                    
+                    if (paper != null) {
+                        paperMap[arxivId] = paper
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error fetching paper $arxivId", e)
+                }
             }
 
-            Log.d(TAG, "Paper map contains ${paperMap.size} papers with IDs: ${paperMap.keys}")
-            
             // Reorder papers according to Semantic Scholar order
-            val orderedPapers = initialPaperIds.mapNotNull { arxivId ->
+            val orderedPapers = allPaperIds.take(PAPERS_PER_PAGE).mapNotNull { arxivId ->
                 paperMap[arxivId].also { paper ->
                     if (paper == null) {
                         Log.w(TAG, "Could not find paper for arXiv ID: $arxivId")
-                    } else {
-                        Log.d(TAG, "Found paper for arXiv ID: $arxivId - ${paper.title}")
                     }
                 }
             }
@@ -383,6 +380,68 @@ class ArxivRepository {
             Log.e(TAG, "Error searching papers", e)
             Result.failure(e)
         }
+    }
+
+    suspend fun getPaperById(paperId: String): ArxivPaper {
+        return fetchPaperDetails(paperId).getOrThrow()
+    }
+
+    fun getNextBatchOfPapers(): List<ArxivPaper> {
+        val nextBatch = remainingNewPapers.take(PAPERS_PER_PAGE)
+        remainingNewPapers = remainingNewPapers.drop(PAPERS_PER_PAGE)
+        return nextBatch
+    }
+
+    fun hasMoreTopPapers(): Boolean {
+        return remainingPaperIds.isNotEmpty()
+    }
+
+    suspend fun getNextBatchOfTopPapers(): Result<List<ArxivPaper>> = coroutineScope {
+        try {
+            if (remainingPaperIds.isEmpty()) {
+                return@coroutineScope Result.success(emptyList())
+            }
+
+            val nextBatch = remainingPaperIds.take(PAPERS_PER_PAGE)
+            remainingPaperIds = remainingPaperIds.drop(PAPERS_PER_PAGE)
+
+            // Fetch papers for the next batch of IDs
+            val paperMap = mutableMapOf<String, ArxivPaper>()
+            nextBatch.forEach { arxivId ->
+                try {
+                    val paper = api.searchPapers(
+                        query = arxivId,
+                        maxResults = 1,
+                        isIdQuery = true
+                    ).getOrNull()?.firstOrNull()
+                    
+                    if (paper != null) {
+                        paperMap[arxivId] = paper
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error fetching paper $arxivId", e)
+                }
+            }
+
+            // Reorder papers according to Semantic Scholar order
+            val orderedPapers = nextBatch.mapNotNull { arxivId ->
+                paperMap[arxivId].also { paper ->
+                    if (paper == null) {
+                        Log.w(TAG, "Could not find paper for arXiv ID: $arxivId")
+                    }
+                }
+            }
+
+            Result.success(orderedPapers)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading next batch of top papers", e)
+            Result.failure(e)
+        }
+    }
+
+    fun clearRemainingPapers() {
+        remainingNewPapers = emptyList()
+        remainingPaperIds = emptyList()
     }
 }
 

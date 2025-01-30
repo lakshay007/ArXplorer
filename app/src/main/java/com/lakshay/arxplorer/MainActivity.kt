@@ -31,14 +31,18 @@ import com.lakshay.arxplorer.ui.preferences.PreferencesViewModel
 import com.lakshay.arxplorer.ui.paper.PaperViewModel
 import com.lakshay.arxplorer.ui.splash.SplashScreen
 import com.lakshay.arxplorer.ui.ArXplorerApp
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.navigation.compose.rememberNavController
+import com.lakshay.arxplorer.ui.paper.PaperCommentsViewModel
+import javax.inject.Inject
 
 private const val TAG = "MainActivity"
 private const val RC_SIGN_IN = 9001
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
     private val homeViewModel: HomeViewModel by viewModels()
@@ -46,11 +50,13 @@ class MainActivity : ComponentActivity() {
     private val preferencesViewModel: PreferencesViewModel by viewModels()
     private lateinit var googleSignInClient: GoogleSignInClient
 
+    @Inject
+    lateinit var viewModelFactory: PaperCommentsViewModel.Factory
+
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-       
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(BuildConfig.WEB_CLIENT_ID)
             .requestEmail()
@@ -59,12 +65,10 @@ class MainActivity : ComponentActivity() {
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-        
         lifecycleScope.launch {
             try {
                 val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
                 if (account != null) {
-                 
                     val silentSignInResult = googleSignInClient.silentSignIn().await()
                     val idToken = silentSignInResult.idToken
                     if (idToken != null) {
@@ -76,7 +80,6 @@ class MainActivity : ComponentActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Silent sign-in failed", e)
-              
             }
         }
 
@@ -97,7 +100,7 @@ class MainActivity : ComponentActivity() {
                 } else {
                     when (authState) {
                         is AuthState.Loading -> {
-                           
+                            LoadingScreen()
                         }
                         is AuthState.Authenticated -> {
                             ArXplorerApp(
@@ -122,7 +125,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         AuthState.Initial -> {
-                            
+                            LoadingScreen()
                         }
                     }
                 }

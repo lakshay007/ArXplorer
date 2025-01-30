@@ -5,9 +5,21 @@ import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import com.lakshay.arxplorer.data.model.ArxivPaper
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class PaperViewModel(application: Application) : AndroidViewModel(application) {
-    
+@HiltViewModel
+class PaperViewModel @Inject constructor(application: Application) : AndroidViewModel(application) {
+    private val _currentPaper = MutableStateFlow<ArxivPaper?>(null)
+    val currentPaper: StateFlow<ArxivPaper?> = _currentPaper
+
+    fun setPaper(paper: ArxivPaper?) {
+        _currentPaper.value = paper
+    }
+
     fun downloadPdf(pdfUrl: String) {
         val intent = Intent(Intent.ACTION_VIEW).apply {
             data = Uri.parse(pdfUrl)

@@ -28,6 +28,8 @@ import com.lakshay.arxplorer.ui.components.PaperCard
 import com.lakshay.arxplorer.data.model.ArxivPaper
 import com.lakshay.arxplorer.data.repository.TimePeriod
 import java.util.*
+import androidx.navigation.NavController
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,7 +37,8 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     username: String,
     onPaperClick: (ArxivPaper) -> Unit,
-    onPreferencesNeeded: () -> Unit
+    onPreferencesNeeded: () -> Unit,
+    navController: NavController
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var showSortOptions by remember { mutableStateOf(false) }
@@ -47,6 +50,8 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val showPreferences by viewModel.showPreferencesScreen.collectAsState()
     val isLoading = uiState is UiState.Loading
+    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+    val commentCounts by viewModel.commentCounts.collectAsState()
 
     val sortByOptions = listOf(
         "All" to "all",
@@ -311,7 +316,7 @@ fun HomeScreen(
                     onClick = { 
                         if (!isLoading) {  // Prevent clicking while loading
                             selectedFilter = "new"
-                            viewModel.refreshPapers()
+                            viewModel.loadPapers()
                         }
                     },
                     label = { Text("New on ArXiv") },
@@ -429,8 +434,6 @@ fun HomeScreen(
                         onRefresh = { viewModel.refreshPapers() },
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        val isLoadingMore by viewModel.isLoadingMore.collectAsState()
-
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -442,6 +445,11 @@ fun HomeScreen(
                                 PaperCard(
                                     paper = paper,
                                     onClick = { onPaperClick(paper) },
+                                    onCommentClick = { 
+                                        val baseId = paper.id.substringAfterLast('/').split("v")[0]
+                                        navController.navigate("comments/$baseId") 
+                                    },
+                                    commentCount = commentCounts[paper.id.substringAfterLast('/').split("v")[0]] ?: 0,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }

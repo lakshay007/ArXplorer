@@ -22,14 +22,18 @@ class ArxivApi {
         start: Int = 0,
         maxResults: Int = 10,
         sortBy: String = "submittedDate",
-        sortOrder: String = "descending"
+        sortOrder: String = "descending",
+        isIdQuery: Boolean = false
     ): Result<List<ArxivPaper>> = withContext(Dispatchers.IO) {
         try {
-
             delay(100)
             
-
-            val searchUrl = buildSearchUrl(query, start, maxResults, sortBy, sortOrder)
+            val searchUrl = if (isIdQuery) {
+                "$baseUrl?id_list=$query"
+            } else {
+                buildSearchUrl(query, start, maxResults, sortBy, sortOrder)
+            }
+            
             Log.d(TAG, "Making API request to: $searchUrl")
             
             val papers = fetchAndParsePapers(searchUrl)
@@ -61,13 +65,21 @@ class ArxivApi {
         val connection = url.openConnection()
         connection.setRequestProperty("User-Agent", "ArXplorer/1.0 (Android App)")
 
-        Log.d(TAG, "Opening connection to arXiv API...")
+        Log.d(TAG, "Making request to: $urlString")
         val factory = DocumentBuilderFactory.newInstance()
         val builder = factory.newDocumentBuilder()
-        val doc = builder.parse(connection.getInputStream())
+        val inputStream = connection.getInputStream()
+        val doc = builder.parse(inputStream)
 
         val entries = doc.getElementsByTagName("entry")
         Log.d(TAG, "Found ${entries.length} entries in response")
+        
+        if (entries.length == 0) {
+            // Log the raw response for debugging
+            inputStream.reset()
+            val response = inputStream.bufferedReader().use { it.readText() }
+            Log.d(TAG, "Raw API response: $response")
+        }
         
         val papers = mutableListOf<ArxivPaper>()
 

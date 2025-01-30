@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,12 +29,16 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaperCard(
     paper: ArxivPaper,
     onClick: () -> Unit,
+    onCommentClick: () -> Unit,
+    commentCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val deepPurple = Color(0xFF4A148C)
@@ -137,33 +142,27 @@ fun PaperCard(
         }
     }
 
-    // Function to handle AI feature clicks
     fun handleAiFeatureClick(isChat: Boolean) {
-        if (isCheckingSize) return
+        isAiChat = isChat
+        isCheckingSize = true
         
         coroutineScope.launch {
-            isCheckingSize = true
             val size = getPaperSize(paper.pdfUrl)
             isCheckingSize = false
             
-            if (size > 17 * 1024 * 1024) { // 17 MB in bytes
+            if (size > 10 * 1024 * 1024) { // 10MB limit
                 showSizeLimitDialog = true
             } else {
-                isAiChat = isChat
                 showDialog = true
             }
         }
     }
 
-    Card(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White,
-            contentColor = Color.Black
-        )
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = Color.White)
     ) {
         Column(
             modifier = Modifier
@@ -246,22 +245,63 @@ fun PaperCard(
 
             // AI Feature buttons row
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { /* Prevent click propagation */ },
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Comment button
+                FilledTonalButton(
+                    onClick = { 
+                        onCommentClick()
+                    },
+                    modifier = Modifier
+                        .weight(0.3f)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { /* Prevent click propagation */ },
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = lightPurple.copy(alpha = 0.5f),
+                        contentColor = deepPurple.copy(alpha = 0.7f)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    interactionSource = remember { MutableInteractionSource() }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Comment,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(commentCount.toString())
+                }
+
                 // AI Chat button
                 FilledTonalButton(
-                    onClick = { handleAiFeatureClick(true) },
+                    onClick = { 
+                        handleAiFeatureClick(true)
+                    },
                     enabled = !isCheckingSize,
-                    modifier = Modifier.weight(0.7f),
+                    modifier = Modifier
+                        .weight(0.7f)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = !isCheckingSize
+                        ) { /* Prevent click propagation */ },
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = deepPurple.copy(alpha = 0.1f),
                         contentColor = deepPurple,
                         disabledContainerColor = deepPurple.copy(alpha = 0.05f),
                         disabledContentColor = deepPurple.copy(alpha = 0.5f)
                     ),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    interactionSource = remember { MutableInteractionSource() }
                 ) {
                     if (isCheckingSize) {
                         CircularProgressIndicator(
@@ -282,15 +322,24 @@ fun PaperCard(
 
                 // Summary button
                 FilledTonalIconButton(
-                    onClick = { handleAiFeatureClick(false) },
+                    onClick = { 
+                        handleAiFeatureClick(false)
+                    },
                     enabled = !isCheckingSize,
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = !isCheckingSize
+                        ) { /* Prevent click propagation */ },
                     colors = IconButtonDefaults.filledTonalIconButtonColors(
                         containerColor = lightPurple.copy(alpha = 0.5f),
                         contentColor = deepPurple.copy(alpha = 0.7f),
                         disabledContainerColor = lightPurple.copy(alpha = 0.3f),
                         disabledContentColor = deepPurple.copy(alpha = 0.3f)
-                    )
+                    ),
+                    interactionSource = remember { MutableInteractionSource() }
                 ) {
                     if (isCheckingSize) {
                         CircularProgressIndicator(
