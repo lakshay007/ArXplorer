@@ -18,11 +18,31 @@ class CommentRepository @Inject constructor(
         val response = commentApi.getComments(paperId, "Bearer $token")
         if (response.isSuccessful) {
             response.body()?.let { comments ->
-                emit(comments.map { it.toUiModel() })
+                // Convert all comments to UI models, preserving the nested structure
+                val rootComments = comments.map { it.toUiModel() }
+                emit(rootComments)
             }
         } else {
             throw Exception("Failed to fetch comments: ${response.message()}")
         }
+    }
+
+    private fun CommentResponse.toUiModel(): Comment {
+        val upvoters = userVotes.filter { it.vote == 1 }.map { it.user }
+        val downvoters = userVotes.filter { it.vote == -1 }.map { it.user }
+        
+        return Comment(
+            id = _id,
+            userId = author._id,
+            userName = author.name,
+            userPhotoUrl = author.profilePicture,
+            content = content,
+            parentId = parentId,
+            upvotes = upvoters,
+            downvotes = downvoters,
+            createdAt = ZonedDateTime.parse(createdAt, DateTimeFormatter.ISO_DATE_TIME),
+            replies = replies?.map { it.toUiModel() } ?: emptyList()  // Recursively convert nested replies
+        )
     }
 
     suspend fun addComment(
@@ -58,23 +78,5 @@ class CommentRepository @Inject constructor(
         if (!response.isSuccessful) {
             throw Exception("Failed to delete comment: ${response.message()}")
         }
-    }
-
-    private fun CommentResponse.toUiModel(): Comment {
-        val upvoters = userVotes.filter { it.vote == 1 }.map { it.user }
-        val downvoters = userVotes.filter { it.vote == -1 }.map { it.user }
-        
-        return Comment(
-            id = _id,
-            userId = author._id,
-            userName = author.name,
-            userPhotoUrl = author.profilePicture,
-            content = content,
-            parentId = parentId,
-            upvotes = upvoters,
-            downvotes = downvoters,
-            createdAt = ZonedDateTime.parse(createdAt, DateTimeFormatter.ISO_DATE_TIME),
-            replies = replies?.map { it.toUiModel() } ?: emptyList()
-        )
     }
 } 

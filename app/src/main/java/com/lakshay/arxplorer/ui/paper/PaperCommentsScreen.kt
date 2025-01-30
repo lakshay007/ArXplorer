@@ -113,22 +113,44 @@ fun PaperCommentsScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        Column {
-                            Text(
-                                text = paperData.abstract,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Black,
-                                maxLines = if (isAbstractExpanded) Int.MAX_VALUE else 3
-                            )
-                            TextButton(
-                                onClick = { isAbstractExpanded = !isAbstractExpanded },
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = deepPurple
-                                ),
-                                contentPadding = PaddingValues(0.dp)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(
+                                    if (isAbstractExpanded) {
+                                        Modifier.heightIn(max = 400.dp)
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .then(
+                                        if (isAbstractExpanded) {
+                                            Modifier.verticalScroll(rememberScrollState())
+                                        } else {
+                                            Modifier
+                                        }
+                                    )
                             ) {
-                                Text(if (isAbstractExpanded) "Show less" else "Read more...")
+                                Text(
+                                    text = paperData.abstract,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Black,
+                                    maxLines = if (isAbstractExpanded) Int.MAX_VALUE else 3
+                                )
                             }
+                        }
+                        
+                        TextButton(
+                            onClick = { isAbstractExpanded = !isAbstractExpanded },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = deepPurple
+                            ),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text(if (isAbstractExpanded) "Show less" else "Read more...")
                         }
                     }
                 }
