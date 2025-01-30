@@ -64,14 +64,14 @@ fun CommentSection(
         CommentInput(
             userPhotoUrl = userPhotoUrl,
             onSubmit = onAddComment,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 2.dp, vertical = 8.dp)
         )
 
         // Comments list
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(rootComments) { comment ->
                 CommentWithReplies(
@@ -102,7 +102,7 @@ fun CommentWithReplies(
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         // Main comment
         CommentItem(
@@ -116,32 +116,36 @@ fun CommentWithReplies(
 
         // Show replies button if there are any
         if (replies.isNotEmpty()) {
-            TextButton(
-                onClick = { showReplies = !showReplies },
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = deepPurple
-                ),
-                modifier = Modifier.padding(start = 28.dp, top = 0.dp),
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Icon(
-                    imageVector = if (showReplies) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (showReplies) "Hide replies" else "Show replies",
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = if (showReplies) "Hide ${replies.size} ${if (replies.size == 1) "reply" else "replies"}" 
-                           else "Show ${replies.size} ${if (replies.size == 1) "reply" else "replies"}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            Box(modifier = Modifier.offset(y = (-8).dp)) {  // Use offset instead of negative padding
+                TextButton(
+                    onClick = { showReplies = !showReplies },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = deepPurple
+                    ),
+                    modifier = Modifier.padding(start = 20.dp),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Icon(
+                        imageVector = if (showReplies) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (showReplies) "Hide replies" else "Show replies",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (showReplies) "Hide ${replies.size} ${if (replies.size == 1) "reply" else "replies"}" 
+                               else "Show ${replies.size} ${if (replies.size == 1) "reply" else "replies"}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
 
         // Replies
         if (showReplies) {
             Column(
-                modifier = Modifier.padding(start = 28.dp, top = 2.dp),
+                modifier = Modifier
+                    .padding(start = 28.dp)
+                    .offset(y = (-4).dp),  // Adjust position to account for the offset above
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 replies.forEach { reply ->
@@ -172,14 +176,14 @@ fun CommentInput(
 
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsyncImage(
             model = userPhotoUrl,
             contentDescription = "User photo",
             modifier = Modifier
-                .size(36.dp)
+                .size(24.dp)
                 .clip(CircleShape),
             contentScale = ContentScale.Crop
         )
@@ -250,7 +254,7 @@ fun CommentItem(
                 model = comment.userPhotoUrl,
                 contentDescription = "User photo",
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(20.dp)
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop
             )
