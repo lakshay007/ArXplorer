@@ -302,10 +302,10 @@ private fun ChatMessage(
 }
 
 private val prompts = listOf(
-    "What is the main contribution?",
-    "Summarize the paper",
     "What are the key results?",
-    "Explain the methodology",
+    "Summarize the paper",
     "What are the limitations?",
+    "What is the main contribution?",
+    "Explain the methodology",
     "Future work suggestions"
 ) 
