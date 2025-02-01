@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -26,16 +27,21 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.lakshay.arxplorer.ui.common.UiState
 import com.lakshay.arxplorer.ui.components.PaperCard
+import com.lakshay.arxplorer.ui.components.ThemeToggleButton
 import com.lakshay.arxplorer.data.model.ArxivPaper
 import com.lakshay.arxplorer.data.repository.TimePeriod
 import java.util.*
 import androidx.navigation.NavController
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.lakshay.arxplorer.ui.theme.ThemeManager
+import com.lakshay.arxplorer.ui.theme.LocalAppColors
+import com.lakshay.arxplorer.ui.theme.ThemeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel,
+    homeViewModel: HomeViewModel = hiltViewModel(),
+    themeViewModel: ThemeViewModel = hiltViewModel(),
     username: String,
     onPaperClick: (ArxivPaper) -> Unit,
     onPreferencesNeeded: () -> Unit,
@@ -48,12 +54,12 @@ fun HomeScreen(
     var selectedFilter by rememberSaveable { mutableStateOf("new") }
     var showTopMenu by remember { mutableStateOf(false) }
     val greeting = remember { getGreeting() }
-    val uiState by viewModel.uiState.collectAsState()
-    val showPreferences by viewModel.showPreferencesScreen.collectAsState()
+    val uiState by homeViewModel.uiState.collectAsState()
+    val showPreferences by homeViewModel.showPreferencesScreen.collectAsState()
     val isLoading = uiState is UiState.Loading
-    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val commentCounts by viewModel.commentCounts.collectAsState()
+    val isLoadingMore by homeViewModel.isLoadingMore.collectAsState()
+    val isRefreshing by homeViewModel.isRefreshing.collectAsState()
+    val commentCounts by homeViewModel.commentCounts.collectAsState()
 
     val sortByOptions = listOf(
         "All" to "all",
@@ -67,9 +73,13 @@ fun HomeScreen(
         "Ascending" to "ascending"
     )
 
-    
+    val colors = LocalAppColors.current
+    val isDarkMode = ThemeManager.isDarkMode
+
+    val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
+
     fun performSearch() {
-        viewModel.searchPapers(
+        homeViewModel.searchPapers(
             query = searchQuery.trim(),
             sortBy = selectedSortBy,
             sortOrder = selectedSortOrder
@@ -82,15 +92,10 @@ fun HomeScreen(
         }
     }
 
-    val deepPurple = Color(0xFF4A148C) // Primary color
-    val lightPurple = Color(0xFFF3E5F5) // Surface color
-    val mediumPurple = Color(0xFFE1BEE7) // Surface variant
-    val darkPurple = Color(0xFF6A1B9A) // Secondary color
-
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(lightPurple)
+            .background(colors.background)
     ) {
         // Top section with gradient background
         Column(
@@ -99,16 +104,16 @@ fun HomeScreen(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            mediumPurple,
-                            mediumPurple.copy(alpha = 0.7f),
-                            lightPurple
+                            colors.surfaceVariant,
+                            colors.surfaceVariant.copy(alpha = 0.7f),
+                            colors.surface
                         )
                     )
                 )
                 .padding(horizontal = 20.dp)
-                .padding(top = 48.dp, bottom = 16.dp)
+                .padding(top = 48.dp, bottom = 8.dp)
         ) {
-            // Greeting and notifications row
+            // Greeting and dark mode toggle row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -118,28 +123,19 @@ fun HomeScreen(
                     Text(
                         text = greeting,
                         fontSize = 16.sp,
-                        color = darkPurple.copy(alpha = 0.7f)
+                        color = colors.secondary.copy(alpha = 0.7f)
                     )
                     Text(
                         text = username,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = deepPurple
+                        color = colors.primary
                     )
                 }
-                IconButton(
-                    onClick = { /* TODO: Handle notifications */ },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.9f))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = "Notifications",
-                        tint = deepPurple
-                    )
-                }
+                ThemeToggleButton(
+                    isDarkTheme = isDarkTheme,
+                    onToggle = { themeViewModel.toggleTheme() }
+                )
             }
             
             // Search bar with sort button
@@ -153,7 +149,7 @@ fun HomeScreen(
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = darkPurple
+                        tint = colors.secondary
                     )
                 },
                 trailingIcon = {
@@ -163,7 +159,7 @@ fun HomeScreen(
                             modifier = Modifier
                                 .size(36.dp)
                                 .background(
-                                    color = lightPurple.copy(alpha = 0.7f),
+                                    color = colors.cardBackground.copy(alpha = 0.7f),
                                     shape = RoundedCornerShape(18.dp)
                                 )
                                 .padding(8.dp)
@@ -184,14 +180,14 @@ fun HomeScreen(
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(2.dp)
-                                            .background(darkPurple.copy(alpha = 0.8f))
+                                            .background(colors.primary.copy(alpha = 0.8f))
                                     )
                                     // End circle
                                     Box(
                                         modifier = Modifier
                                             .size(4.dp)
-                                            .background(Color.White, RoundedCornerShape(2.dp))
-                                            .border(1.dp, darkPurple.copy(alpha = 0.8f), RoundedCornerShape(2.dp))
+                                            .background(colors.cardBackground, RoundedCornerShape(2.dp))
+                                            .border(1.dp, colors.primary.copy(alpha = 0.8f), RoundedCornerShape(2.dp))
                                     )
                                 }
                                 
@@ -207,15 +203,15 @@ fun HomeScreen(
                                     Box(
                                         modifier = Modifier
                                             .size(4.dp)
-                                            .background(Color.White, RoundedCornerShape(2.dp))
-                                            .border(1.dp, darkPurple.copy(alpha = 0.8f), RoundedCornerShape(2.dp))
+                                            .background(colors.cardBackground, RoundedCornerShape(2.dp))
+                                            .border(1.dp, colors.primary.copy(alpha = 0.8f), RoundedCornerShape(2.dp))
                                     )
                                     // Line
                                     Box(
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(2.dp)
-                                            .background(darkPurple.copy(alpha = 0.8f))
+                                            .background(colors.primary.copy(alpha = 0.8f))
                                     )
                                 }
                             }
@@ -225,13 +221,13 @@ fun HomeScreen(
                             expanded = showSortOptions,
                             onDismissRequest = { showSortOptions = false },
                             modifier = Modifier
-                                .background(color = Color.White.copy(alpha = 0.95f))
+                                .background(color = colors.cardBackground.copy(alpha = 0.95f))
                                 .width(200.dp)
                         ) {
                             Text(
                                 text = "Sort By",
                                 style = MaterialTheme.typography.titleSmall,
-                                color = darkPurple,
+                                color = colors.primary,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                             sortByOptions.forEach { (label, value) ->
@@ -243,23 +239,23 @@ fun HomeScreen(
                                         performSearch()
                                     },
                                     colors = MenuDefaults.itemColors(
-                                        textColor = darkPurple
+                                        textColor = colors.primary
                                     ),
                                     modifier = Modifier.background(
-                                        if (selectedSortBy == value) lightPurple else Color.Transparent
+                                        if (selectedSortBy == value) colors.cardBackground else Color.Transparent
                                     )
                                 )
                             }
 
                             Divider(
                                 modifier = Modifier.padding(vertical = 4.dp),
-                                color = darkPurple.copy(alpha = 0.1f)
+                                color = colors.primary.copy(alpha = 0.1f)
                             )
 
                             Text(
                                 text = "Sort Order",
                                 style = MaterialTheme.typography.titleSmall,
-                                color = darkPurple,
+                                color = colors.primary,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                             sortOrderOptions.forEach { (label, value) ->
@@ -271,10 +267,10 @@ fun HomeScreen(
                                         performSearch()
                                     },
                                     colors = MenuDefaults.itemColors(
-                                        textColor = darkPurple
+                                        textColor = colors.primary
                                     ),
                                     modifier = Modifier.background(
-                                        if (selectedSortOrder == value) lightPurple else Color.Transparent
+                                        if (selectedSortOrder == value) colors.cardBackground else Color.Transparent
                                     )
                                 )
                             }
@@ -293,12 +289,12 @@ fun HomeScreen(
                     .heightIn(min = 56.dp)
                     .clip(RoundedCornerShape(28.dp)),
                 colors = SearchBarDefaults.colors(
-                    containerColor = Color.White.copy(alpha = 0.9f),
+                    containerColor = colors.cardBackground.copy(alpha = 0.9f),
                     dividerColor = Color.Transparent,
                     inputFieldColors = TextFieldDefaults.colors(
-                        focusedTextColor = Color.Black,
-                        unfocusedTextColor = Color.Black,
-                        cursorColor = darkPurple
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary,
+                        cursorColor = colors.primary
                     )
                 )
             ) {
@@ -316,17 +312,17 @@ fun HomeScreen(
                 FilterChip(
                     selected = selectedFilter == "new",
                     onClick = { 
-                        if (!isLoading) {  // Prevent clicking while loading
+                        if (!isLoading) {
                             selectedFilter = "new"
-                            viewModel.loadPapers()
+                            homeViewModel.loadPapers()
                         }
                     },
                     label = { Text("New on ArXiv") },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = deepPurple,
-                        selectedLabelColor = Color.White,
-                        containerColor = Color.White.copy(alpha = 0.9f),
-                        labelColor = darkPurple
+                        selectedContainerColor = colors.primary,
+                        selectedLabelColor = colors.cardBackground,
+                        containerColor = colors.cardBackground.copy(alpha = 0.9f),
+                        labelColor = colors.secondary
                     )
                 )
 
@@ -353,10 +349,10 @@ fun HomeScreen(
                             }
                         },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = deepPurple,
-                            selectedLabelColor = Color.White,
-                            containerColor = Color.White.copy(alpha = 0.9f),
-                            labelColor = darkPurple
+                            selectedContainerColor = colors.primary,
+                            selectedLabelColor = colors.cardBackground,
+                            containerColor = colors.cardBackground.copy(alpha = 0.9f),
+                            labelColor = colors.secondary
                         )
                     )
 
@@ -365,7 +361,7 @@ fun HomeScreen(
                         onDismissRequest = { showTopMenu = false },
                         modifier = Modifier
                             .background(
-                                color = Color.White.copy(alpha = 0.95f)
+                                color = colors.cardBackground.copy(alpha = 0.95f)
                             )
                     ) {
                         val menuItems = listOf(
@@ -380,21 +376,21 @@ fun HomeScreen(
                                 text = { 
                                     Text(
                                         text = label,
-                                        color = darkPurple
+                                        color = colors.primary
                                     ) 
                                 },
                                 onClick = {
                                     selectedFilter = "top_${label.lowercase(Locale.getDefault()).replace(" ", "_")}"
                                     showTopMenu = false
-                                    viewModel.loadTopPapers(period)
+                                    homeViewModel.loadTopPapers(period)
                                 },
                                 colors = MenuDefaults.itemColors(
-                                    textColor = darkPurple,
-                                    leadingIconColor = darkPurple
+                                    textColor = colors.primary,
+                                    leadingIconColor = colors.primary
                                 ),
                                 modifier = Modifier.background(
                                     color = if (selectedFilter == "top_${label.lowercase(Locale.getDefault()).replace(" ", "_")}") 
-                                        lightPurple else Color.Transparent
+                                        colors.cardBackground else Color.Transparent
                                 )
                             )
                         }
@@ -407,7 +403,7 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(lightPurple)
+                .background(colors.background)
         ) {
             when (val state = uiState) {
                 is UiState.Loading -> {
@@ -415,7 +411,7 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = deepPurple)
+                        CircularProgressIndicator(color = colors.primary)
                     }
                 }
                 is UiState.Empty -> {
@@ -426,7 +422,7 @@ fun HomeScreen(
                         Text(
                             text = "No papers found",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = darkPurple.copy(alpha = 0.6f)
+                            color = colors.secondary.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -436,7 +432,7 @@ fun HomeScreen(
                     SwipeRefresh(
                         state = rememberSwipeRefreshState(isRefreshing),
                         onRefresh = { 
-                            viewModel.refreshPapers()
+                            homeViewModel.refreshPapers()
                         },
                         modifier = Modifier.fillMaxSize()
                     ) {
@@ -445,8 +441,8 @@ fun HomeScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(vertical = 16.dp)
+                            verticalArrangement = Arrangement.spacedBy(0.dp),
+                            contentPadding = PaddingValues(vertical = 0.dp)
                         ) {
                             items(
                                 items = state.data,
@@ -473,18 +469,18 @@ fun HomeScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Button(
-                                            onClick = { viewModel.loadMorePapers() },
+                                            onClick = { homeViewModel.loadMorePapers() },
                                             enabled = !isLoadingMore,
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = deepPurple,
-                                                contentColor = Color.White
+                                                containerColor = colors.primary,
+                                                contentColor = colors.cardBackground
                                             ),
                                             modifier = Modifier.fillMaxWidth(0.5f)
                                         ) {
                                             if (isLoadingMore) {
                                                 CircularProgressIndicator(
                                                     modifier = Modifier.size(24.dp),
-                                                    color = Color.White,
+                                                    color = colors.cardBackground,
                                                     strokeWidth = 2.dp
                                                 )
                                             } else {

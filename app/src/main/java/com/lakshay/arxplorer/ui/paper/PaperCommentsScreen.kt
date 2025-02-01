@@ -20,6 +20,7 @@ import com.lakshay.arxplorer.data.repository.ArxivRepository
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.lakshay.arxplorer.ui.theme.LocalAppColors
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -36,10 +37,8 @@ fun PaperCommentsScreen(
     val viewModel: PaperCommentsViewModel = viewModel(
         factory = PaperCommentsViewModel.provideFactory(viewModelFactory, paperId)
     )
-
-    val deepPurple = Color(0xFF4A148C)
-    val lightPurple = Color(0xFFF3E5F5)
     
+    val colors = LocalAppColors.current
     val paper by viewModel.paper.collectAsState()
     val comments by viewModel.comments.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -65,9 +64,9 @@ fun PaperCommentsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = deepPurple,
-                    navigationIconContentColor = deepPurple
+                    containerColor = colors.background,
+                    titleContentColor = colors.textPrimary,
+                    navigationIconContentColor = colors.textPrimary
                 )
             )
         }
@@ -76,7 +75,7 @@ fun PaperCommentsScreen(
             modifier = modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color.White)
+                .background(colors.background)
         ) {
             // Paper details card
             paper?.let { paperData ->
@@ -86,7 +85,7 @@ fun PaperCommentsScreen(
                         .padding(16.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = lightPurple.copy(alpha = 0.3f)
+                        containerColor = colors.surfaceVariant.copy(alpha = 0.3f)
                     )
                 ) {
                     Column(
@@ -98,7 +97,7 @@ fun PaperCommentsScreen(
                             text = paperData.title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = colors.textPrimary
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -108,7 +107,7 @@ fun PaperCommentsScreen(
                                 DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
                             ),
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = colors.textSecondary
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -137,7 +136,7 @@ fun PaperCommentsScreen(
                                 Text(
                                     text = paperData.abstract,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Black,
+                                    color = colors.textPrimary,
                                     maxLines = if (isAbstractExpanded) Int.MAX_VALUE else 3
                                 )
                             }
@@ -146,7 +145,7 @@ fun PaperCommentsScreen(
                         TextButton(
                             onClick = { isAbstractExpanded = !isAbstractExpanded },
                             colors = ButtonDefaults.textButtonColors(
-                                contentColor = deepPurple
+                                contentColor = colors.primary
                             ),
                             contentPadding = PaddingValues(0.dp)
                         ) {
@@ -164,7 +163,7 @@ fun PaperCommentsScreen(
                     .weight(1f),
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White
+                    containerColor = colors.cardBackground
                 )
             ) {
                 CommentSection(

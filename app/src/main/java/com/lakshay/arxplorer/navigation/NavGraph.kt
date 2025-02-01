@@ -32,7 +32,7 @@ fun NavGraph(
         // Home Screen
         composable(route = "home") {
             HomeScreen(
-                viewModel = homeViewModel,
+                homeViewModel = homeViewModel,
                 username = username,
                 onPaperClick = onPaperClick,
                 onPreferencesNeeded = onPreferencesNeeded,

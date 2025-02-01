@@ -22,6 +22,7 @@ import coil.compose.AsyncImage
 import java.time.Duration
 import java.time.ZonedDateTime
 import androidx.compose.material3.LocalTextStyle
+import com.lakshay.arxplorer.ui.theme.LocalAppColors
 
 data class Comment(
     val id: String,
@@ -47,41 +48,62 @@ fun CommentSection(
     onAddComment: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val deepPurple = Color(0xFF4A148C)
-    val lightPurple = Color(0xFFF3E5F5)
-    val textColor = Color(0xFF000000)
+    val colors = LocalAppColors.current
     
     val rootComments = remember(comments) {
         comments.filter { it.parentId == null }
     }
     
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(Color.White)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = colors.cardBackground
     ) {
-        // Comment input field
-        CommentInput(
-            userPhotoUrl = userPhotoUrl,
-            onSubmit = onAddComment,
-            modifier = Modifier.padding(horizontal = 2.dp, vertical = 8.dp)
-        )
-
-        // Comments list
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.cardBackground)
         ) {
-            items(rootComments) { comment ->
-                CommentWithReplies(
-                    comment = comment,
-                    replies = comment.replies,
-                    currentUserId = currentUserId,
-                    onUpvote = onUpvote,
-                    onDownvote = onDownvote,
-                    onReply = onReply
+            // Comment input field
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = colors.cardBackground
+            ) {
+                CommentInput(
+                    userPhotoUrl = userPhotoUrl,
+                    onSubmit = onAddComment,
+                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 8.dp)
                 )
+            }
+
+            // Comments list
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = colors.cardBackground
+            ) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.cardBackground),
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(rootComments) { comment ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = colors.cardBackground
+                        ) {
+                            CommentWithReplies(
+                                comment = comment,
+                                replies = comment.replies,
+                                currentUserId = currentUserId,
+                                userPhotoUrl = userPhotoUrl,
+                                onUpvote = onUpvote,
+                                onDownvote = onDownvote,
+                                onReply = onReply
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -92,71 +114,87 @@ fun CommentWithReplies(
     comment: Comment,
     replies: List<Comment>,
     currentUserId: String,
+    userPhotoUrl: String,
     onUpvote: (Comment) -> Unit,
     onDownvote: (Comment) -> Unit,
     onReply: (Comment, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showReplies by remember { mutableStateOf(false) }
-    val deepPurple = Color(0xFF4A148C)
+    val colors = LocalAppColors.current
 
-    Column(
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
+        color = colors.cardBackground
     ) {
-        // Main comment
-        CommentItem(
-            comment = comment,
-            currentUserId = currentUserId,
-            onUpvote = onUpvote,
-            onDownvote = onDownvote,
-            onReply = onReply,
-            showReplyButton = true
-        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            // Main comment
+            CommentItem(
+                comment = comment,
+                currentUserId = currentUserId,
+                userPhotoUrl = userPhotoUrl,
+                onUpvote = onUpvote,
+                onDownvote = onDownvote,
+                onReply = onReply,
+                showReplyButton = true
+            )
 
-        // Show replies button if there are any
-        if (replies.isNotEmpty()) {
-            Box(modifier = Modifier.offset(y = (-8).dp)) {  // Use offset instead of negative padding
-                TextButton(
-                    onClick = { showReplies = !showReplies },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = deepPurple
-                    ),
-                    modifier = Modifier.padding(start = 20.dp),
-                    contentPadding = PaddingValues(0.dp)
+            // Show replies button if there are any
+            if (replies.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier.offset(y = (-8).dp),
+                    color = colors.cardBackground
                 ) {
-                    Icon(
-                        imageVector = if (showReplies) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (showReplies) "Hide replies" else "Show replies",
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (showReplies) "Hide ${replies.size} ${if (replies.size == 1) "reply" else "replies"}" 
-                               else "Show ${replies.size} ${if (replies.size == 1) "reply" else "replies"}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    TextButton(
+                        onClick = { showReplies = !showReplies },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = colors.primary,
+                            containerColor = colors.cardBackground
+                        ),
+                        modifier = Modifier.padding(start = 20.dp),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (showReplies) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (showReplies) "Hide replies" else "Show replies",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (showReplies) "Hide ${replies.size} ${if (replies.size == 1) "reply" else "replies"}" 
+                                   else "Show ${replies.size} ${if (replies.size == 1) "reply" else "replies"}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
-        }
 
-        // Replies
-        if (showReplies) {
-            Column(
-                modifier = Modifier
-                    .padding(start = 28.dp)
-                    .offset(y = (-4).dp),  // Adjust position to account for the offset above
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                replies.forEach { reply ->
-                    CommentItem(
-                        comment = reply,
-                        currentUserId = currentUserId,
-                        onUpvote = onUpvote,
-                        onDownvote = onDownvote,
-                        onReply = onReply,
-                        showReplyButton = false
-                    )
+            // Replies
+            if (showReplies) {
+                Surface(
+                    modifier = Modifier
+                        .padding(start = 28.dp)
+                        .offset(y = (-4).dp),
+                    color = colors.cardBackground
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        replies.forEach { reply ->
+                            CommentItem(
+                                comment = reply,
+                                currentUserId = currentUserId,
+                                userPhotoUrl = userPhotoUrl,
+                                onUpvote = onUpvote,
+                                onDownvote = onDownvote,
+                                onReply = onReply,
+                                showReplyButton = false
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -170,58 +208,62 @@ fun CommentInput(
     modifier: Modifier = Modifier
 ) {
     var commentText by remember { mutableStateOf("") }
-    val deepPurple = Color(0xFF4A148C)
-    val lightPurple = Color(0xFFF3E5F5)
-    val textColor = Color(0xFF000000)
+    val colors = LocalAppColors.current
 
-    Row(
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
+        color = colors.cardBackground
     ) {
-        AsyncImage(
-            model = userPhotoUrl,
-            contentDescription = "User photo",
-            modifier = Modifier
-                .size(24.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = userPhotoUrl,
+                contentDescription = "User photo",
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
 
-        TextField(
-            value = commentText,
-            onValueChange = { commentText = it },
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(20.dp)),
-            placeholder = { Text("Add a comment...", color = Color.Gray) },
-            textStyle = LocalTextStyle.current.copy(color = textColor),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = lightPurple.copy(alpha = 0.1f),
-                unfocusedContainerColor = lightPurple.copy(alpha = 0.1f),
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor,
-                cursorColor = deepPurple
-            ),
-            trailingIcon = {
-                if (commentText.isNotBlank()) {
-                    IconButton(
-                        onClick = {
-                            onSubmit(commentText)
-                            commentText = ""
+            TextField(
+                value = commentText,
+                onValueChange = { commentText = it },
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(20.dp)),
+                placeholder = { Text("Add a comment...", color = colors.textSecondary.copy(alpha = 0.6f)) },
+                textStyle = LocalTextStyle.current.copy(color = colors.textPrimary),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = colors.cardBackground,
+                    unfocusedContainerColor = colors.cardBackground,
+                    disabledContainerColor = colors.cardBackground,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedTextColor = colors.textPrimary,
+                    unfocusedTextColor = colors.textPrimary,
+                    cursorColor = colors.primary
+                ),
+                trailingIcon = {
+                    if (commentText.isNotBlank()) {
+                        IconButton(
+                            onClick = {
+                                onSubmit(commentText)
+                                commentText = ""
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = "Send",
+                                tint = colors.primary
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Send,
-                            contentDescription = "Send",
-                            tint = deepPurple
-                        )
                     }
                 }
-            }
-        )
+            )
+        }
     }
 }
 
@@ -229,138 +271,169 @@ fun CommentInput(
 fun CommentItem(
     comment: Comment,
     currentUserId: String,
+    userPhotoUrl: String,
     onUpvote: (Comment) -> Unit,
     onDownvote: (Comment) -> Unit,
     onReply: (Comment, String) -> Unit,
     showReplyButton: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val deepPurple = Color(0xFF4A148C)
-    val lightPurple = Color(0xFFF3E5F5)
-    val textColor = Color(0xFF000000)
+    val colors = LocalAppColors.current
     var showReplyInput by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(Color.White)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = colors.cardBackground
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.Top
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
         ) {
-            AsyncImage(
-                model = comment.userPhotoUrl,
-                contentDescription = "User photo",
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(1.dp)
+            // Comment header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+                AsyncImage(
+                    model = comment.userPhotoUrl,
+                    contentDescription = "User photo",
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+                
+                Column {
                     Text(
                         text = comment.userName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = colors.textPrimary
                     )
                     
                     Text(
-                        text = "• ${getTimeAgo(comment.createdAt)}",
+                        text = getTimeAgo(comment.createdAt),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = colors.textSecondary
                     )
                 }
+            }
 
-                Text(
-                    text = comment.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = textColor
-                )
+            // Comment content
+            Text(
+                text = comment.content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textPrimary,
+                modifier = Modifier.padding(start = 32.dp, top = 4.dp)
+            )
 
+            // Action buttons
+            Row(
+                modifier = Modifier
+                    .padding(start = 32.dp, top = 4.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Voting buttons
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 2.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Voting buttons
+                    // Upvote button with count
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (comment.upvotes.contains(currentUserId)) 
+                                    colors.surfaceVariant.copy(alpha = 0.3f)
+                                else colors.cardBackground
+                            )
                     ) {
                         IconButton(
                             onClick = { onUpvote(comment) },
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
                                 imageVector = if (comment.upvotes.contains(currentUserId)) 
                                     Icons.Default.ThumbUp else Icons.Default.ThumbUpOffAlt,
                                 contentDescription = "Upvote",
                                 tint = if (comment.upvotes.contains(currentUserId)) 
-                                    deepPurple else Color.Gray,
-                                modifier = Modifier.size(14.dp)
+                                    colors.primary else colors.textSecondary,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                         Text(
                             text = comment.upvotes.size.toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (comment.upvotes.contains(currentUserId)) 
+                                colors.primary else colors.textSecondary,
+                            modifier = Modifier.padding(end = 8.dp)
                         )
-
+                    }
+                    
+                    Spacer(modifier = Modifier.width(4.dp))
+                    
+                    // Downvote button with count
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (comment.downvotes.contains(currentUserId)) 
+                                    colors.surfaceVariant.copy(alpha = 0.3f)
+                                else colors.cardBackground
+                            )
+                    ) {
                         IconButton(
                             onClick = { onDownvote(comment) },
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
                                 imageVector = if (comment.downvotes.contains(currentUserId)) 
                                     Icons.Default.ThumbDown else Icons.Default.ThumbDownOffAlt,
                                 contentDescription = "Downvote",
                                 tint = if (comment.downvotes.contains(currentUserId)) 
-                                    deepPurple else Color.Gray,
-                                modifier = Modifier.size(14.dp)
+                                    colors.primary else colors.textSecondary,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                         Text(
                             text = comment.downvotes.size.toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (comment.downvotes.contains(currentUserId)) 
+                                colors.primary else colors.textSecondary,
+                            modifier = Modifier.padding(end = 8.dp)
                         )
                     }
+                }
 
-                    // Reply button - only show for top-level comments
-                    if (showReplyButton) {
-                        TextButton(
-                            onClick = { showReplyInput = !showReplyInput },
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = deepPurple
-                            ),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
-                        ) {
-                            Text("Reply")
-                        }
+                if (showReplyButton) {
+                    TextButton(
+                        onClick = { showReplyInput = !showReplyInput },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = colors.primary
+                        ),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text("Reply", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
+            }
 
-                // Reply input field
-                if (showReplyInput) {
-                    CommentInput(
-                        userPhotoUrl = comment.userPhotoUrl,
-                        onSubmit = { text ->
-                            onReply(comment, text)
-                            showReplyInput = false
-                        },
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
+            // Reply input
+            if (showReplyInput) {
+                CommentInput(
+                    userPhotoUrl = userPhotoUrl,
+                    onSubmit = { content ->
+                        onReply(comment, content)
+                        showReplyInput = false
+                    },
+                    modifier = Modifier.padding(start = 32.dp, top = 8.dp)
+                )
             }
         }
     }

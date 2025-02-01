@@ -55,12 +55,30 @@ fun PaperScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var showAbstract by remember { mutableStateOf(false) }
     var showControls by remember { mutableStateOf(true) }
+    var pdfFile by remember { mutableStateOf<File?>(null) }
+    var isDownloading by remember { mutableStateOf(false) }
 
     LaunchedEffect(showControls) {
         if (showControls) {
             launch {
                 delay(3000) // Hide controls after 3 seconds
                 showControls = false
+            }
+        }
+    }
+
+    // Download PDF only once when paper changes
+    LaunchedEffect(paper?.pdfUrl) {
+        paper?.pdfUrl?.let { url ->
+            if (pdfFile == null && !isDownloading) {
+                isDownloading = true
+                try {
+                    pdfFile = downloadPdf(context, url)
+                } catch (e: Exception) {
+                    error = "Failed to download PDF: ${e.message}"
+                } finally {
+                    isDownloading = false
+                }
             }
         }
     }
@@ -114,61 +132,49 @@ fun PaperScreen(
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.surface)
                 ) {
-                    AndroidView(
-                        factory = { context ->
-                            PDFView(context, null).apply {
-                                layoutParams = FrameLayout.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT
-                                )
-                                setOnClickListener {
-                                    showControls = true
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                        update = { pdfView ->
-                            coroutineScope.launch {
-                                try {
-                                    val file = downloadPdf(context, currentPaper.pdfUrl)
-                                    withContext(Dispatchers.Main) {
-                                        pdfView.fromFile(file)
-                                            .enableSwipe(true)
-                                            .swipeHorizontal(false)
-                                            .enableDoubletap(true)
-                                            .enableAnnotationRendering(true)
-                                            .spacing(0)
-                                            .autoSpacing(false)
-                                            .pageFitPolicy(com.github.barteksc.pdfviewer.util.FitPolicy.WIDTH)
-                                            .pageSnap(true)
-                                            .pageFling(true)
-                                            .nightMode(false)
-                                            .defaultPage(0)
-                                            .onLoad {
-                                                isLoading = false
-                                                Log.d("PaperScreen", "PDF loaded successfully")
-                                            }
-                                            .onError { t ->
-                                                isLoading = false
-                                                error = "Failed to load PDF: ${t.message}"
-                                                Log.e("PaperScreen", "Failed to load PDF", t)
-                                            }
-                                            .onPageError { page, t ->
-                                                Log.e("PaperScreen", "Error on page $page", t)
-                                            }
-                                            .load()
+                    pdfFile?.let { file ->
+                        AndroidView(
+                            factory = { context ->
+                                PDFView(context, null).apply {
+                                    layoutParams = FrameLayout.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.MATCH_PARENT
+                                    )
+                                    setOnClickListener {
+                                        showControls = true
                                     }
-                                } catch (e: Exception) {
-                                    withContext(Dispatchers.Main) {
-                                        isLoading = false
-                                        error = "Failed to download PDF: ${e.message}"
-                                    }
+                                    fromFile(file)
+                                        .enableSwipe(true)
+                                        .swipeHorizontal(false)
+                                        .enableDoubletap(true)
+                                        .enableAnnotationRendering(true)
+                                        .spacing(0)
+                                        .autoSpacing(false)
+                                        .pageFitPolicy(com.github.barteksc.pdfviewer.util.FitPolicy.WIDTH)
+                                        .pageSnap(true)
+                                        .pageFling(true)
+                                        .nightMode(false)
+                                        .defaultPage(0)
+                                        .onLoad {
+                                            isLoading = false
+                                            Log.d("PaperScreen", "PDF loaded successfully")
+                                        }
+                                        .onError { t ->
+                                            isLoading = false
+                                            error = "Failed to load PDF: ${t.message}"
+                                            Log.e("PaperScreen", "Failed to load PDF", t)
+                                        }
+                                        .onPageError { page, t ->
+                                            Log.e("PaperScreen", "Error on page $page", t)
+                                        }
+                                        .load()
                                 }
-                            }
-                        }
-                    )
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
-                    if (isLoading) {
+                    if (isLoading || isDownloading) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center

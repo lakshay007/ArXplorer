@@ -38,6 +38,9 @@ import kotlinx.coroutines.delay
 import androidx.navigation.compose.rememberNavController
 import com.lakshay.arxplorer.ui.paper.PaperCommentsViewModel
 import javax.inject.Inject
+import com.lakshay.arxplorer.ui.theme.ThemeViewModel
+import androidx.activity.OnBackPressedCallback
+import androidx.navigation.NavHostController
 
 private const val TAG = "MainActivity"
 private const val RC_SIGN_IN = 9001
@@ -48,7 +51,9 @@ class MainActivity : ComponentActivity() {
     private val homeViewModel: HomeViewModel by viewModels()
     private val paperViewModel: PaperViewModel by viewModels()
     private val preferencesViewModel: PreferencesViewModel by viewModels()
+    private val themeViewModel: ThemeViewModel by viewModels()
     private lateinit var googleSignInClient: GoogleSignInClient
+    private var navController: NavHostController? = null
 
     @Inject
     lateinit var viewModelFactory: PaperCommentsViewModel.Factory
@@ -56,6 +61,28 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Add back press handler
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // First check if PDF viewer is open
+                if (paperViewModel.currentPaper.value != null) {
+                    paperViewModel.setPaper(null)
+                    return
+                }
+
+                // Then handle navigation stack
+                navController?.let { navController ->
+                    if (navController.currentBackStackEntry?.destination?.route?.startsWith("comments/") == true) {
+                        navController.popBackStack()
+                    } else if (navController.previousBackStackEntry == null) {
+                        finish()
+                    } else {
+                        navController.popBackStack()
+                    }
+                } ?: finish()
+            }
+        })
 
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(BuildConfig.WEB_CLIENT_ID)
@@ -65,67 +92,58 @@ class MainActivity : ComponentActivity() {
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-        lifecycleScope.launch {
-            try {
-                val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
-                if (account != null) {
-                    val silentSignInResult = googleSignInClient.silentSignIn().await()
-                    val idToken = silentSignInResult.idToken
-                    if (idToken != null) {
-                        Log.d(TAG, "Silent sign-in successful")
-                        authViewModel.handleSignInResult(idToken)
-                    } else {
-                        Log.d(TAG, "Silent sign-in failed - no token")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Silent sign-in failed", e)
-            }
-        }
-
         setContent {
-            ArXplorerTheme {
-                val authState by authViewModel.authState.collectAsState()
-                var showSplash by remember { mutableStateOf(true) }
+            val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
+            val navController = rememberNavController().also { navController = it }
+            
+            ArXplorerTheme(darkTheme = isDarkTheme) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    val authState by authViewModel.authState.collectAsState()
+                    var showSplash by remember { mutableStateOf(true) }
 
-                LaunchedEffect(authState) {
-                    if (authState !is AuthState.Loading) {
-                        delay(1000) // Show splash for at least 1 second
-                        showSplash = false
+                    LaunchedEffect(authState) {
+                        if (authState !is AuthState.Loading) {
+                            delay(1000) // Show splash for at least 1 second
+                            showSplash = false
+                        }
                     }
-                }
 
-                if (showSplash) {
-                    SplashScreen()
-                } else {
-                    when (authState) {
-                        is AuthState.Loading -> {
-                            LoadingScreen()
-                        }
-                        is AuthState.Authenticated -> {
-                            ArXplorerApp(
-                                homeViewModel = homeViewModel,
-                                paperViewModel = paperViewModel,
-                                preferencesViewModel = preferencesViewModel
-                            )
-                        }
-                        is AuthState.Unauthenticated -> {
-                            OnboardingScreen(
-                                onSignInClick = {
-                                    signIn()
-                                }
-                            )
-                        }
-                        is AuthState.Error -> {
-                            ErrorScreen(
-                                message = (authState as AuthState.Error).message,
-                                onRetry = {
-                                    signIn()
-                                }
-                            )
-                        }
-                        AuthState.Initial -> {
-                            LoadingScreen()
+                    if (showSplash) {
+                        SplashScreen()
+                    } else {
+                        when (authState) {
+                            is AuthState.Loading -> {
+                                LoadingScreen()
+                            }
+                            is AuthState.Authenticated -> {
+                                ArXplorerApp(
+                                    homeViewModel = homeViewModel,
+                                    paperViewModel = paperViewModel,
+                                    preferencesViewModel = preferencesViewModel,
+                                    navController = navController
+                                )
+                            }
+                            is AuthState.Unauthenticated -> {
+                                OnboardingScreen(
+                                    onSignInClick = {
+                                        signIn()
+                                    }
+                                )
+                            }
+                            is AuthState.Error -> {
+                                ErrorScreen(
+                                    message = (authState as AuthState.Error).message,
+                                    onRetry = {
+                                        signIn()
+                                    }
+                                )
+                            }
+                            AuthState.Initial -> {
+                                LoadingScreen()
+                            }
                         }
                     }
                 }

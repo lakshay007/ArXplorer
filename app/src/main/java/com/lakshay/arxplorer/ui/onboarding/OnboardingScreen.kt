@@ -26,11 +26,15 @@ import kotlinx.coroutines.launch
 fun OnboardingScreen(
     onSignInClick: () -> Unit
 ) {
+    val lightPurple = Color(0xFFF3E5F5)
+    val mediumPurple = Color(0xFFE1BEE7)
+    val deepPurple = Color(0xFF4A148C)
+    
     val gradient = Brush.verticalGradient(
         colors = listOf(
-            MaterialTheme.colorScheme.surface,
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+            Color.White,
+            lightPurple,
+            mediumPurple.copy(alpha = 0.5f)
         )
     )
 
@@ -78,8 +82,8 @@ fun OnboardingScreen(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(16.dp),
-                activeColor = MaterialTheme.colorScheme.primary,
-                inactiveColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                activeColor = deepPurple,
+                inactiveColor = deepPurple.copy(alpha = 0.3f)
             )
 
             AnimatedVisibility(
@@ -108,7 +112,10 @@ fun OnboardingScreen(
                             coroutineScope.launch {
                                 pagerState.animateScrollToPage(pages.size - 1)
                             }
-                        }
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = deepPurple
+                        )
                     ) {
                         Text(text = "Skip")
                     }
@@ -117,7 +124,10 @@ fun OnboardingScreen(
                             coroutineScope.launch {
                                 pagerState.animateScrollToPage(pagerState.currentPage + 1)
                             }
-                        }
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = deepPurple
+                        )
                     ) {
                         Text(text = "Next")
                     }
@@ -136,13 +146,13 @@ fun GoogleSignInButton(
         onClick = onClick,
         modifier = modifier.height(56.dp),
         colors = ButtonDefaults.elevatedButtonColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface
+            containerColor = Color.White,
+            contentColor = Color.Black
         ),
         shape = RoundedCornerShape(28.dp),
         elevation = ButtonDefaults.elevatedButtonElevation(
-            defaultElevation = 6.dp,
-            pressedElevation = 8.dp
+            defaultElevation = 2.dp,
+            pressedElevation = 4.dp
         )
     ) {
         Row(
@@ -159,7 +169,8 @@ fun GoogleSignInButton(
             Text(
                 text = "Sign in with Google",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
             )
         }
     }
@@ -187,14 +198,14 @@ fun PagerScreen(onboardingPage: OnboardingPage) {
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface
+            color = Color.Black
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = onboardingPage.description,
             fontSize = 16.sp,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = Color.DarkGray
         )
     }
 }
