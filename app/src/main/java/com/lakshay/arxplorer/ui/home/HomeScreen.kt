@@ -468,23 +468,38 @@ fun HomeScreen(
                                             .padding(vertical = 16.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Button(
+                                        TextButton(
                                             onClick = { homeViewModel.loadMorePapers() },
                                             enabled = !isLoadingMore,
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = colors.primary,
-                                                contentColor = colors.cardBackground
+                                            colors = ButtonDefaults.textButtonColors(
+                                                contentColor = colors.primary,
+                                                disabledContentColor = colors.primary.copy(alpha = 0.6f)
                                             ),
-                                            modifier = Modifier.fillMaxWidth(0.5f)
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 32.dp)
                                         ) {
-                                            if (isLoadingMore) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(24.dp),
-                                                    color = colors.cardBackground,
-                                                    strokeWidth = 2.dp
-                                                )
-                                            } else {
-                                                Text("Load More")
+                                            Row(
+                                                horizontalArrangement = Arrangement.Center,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                if (isLoadingMore) {
+                                                    CircularProgressIndicator(
+                                                        modifier = Modifier.size(16.dp),
+                                                        color = colors.primary,
+                                                        strokeWidth = 2.dp
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        "Loading more papers...",
+                                                        style = MaterialTheme.typography.bodyMedium
+                                                    )
+                                                } else {
+                                                    Text(
+                                                        "Load more papers",
+                                                        style = MaterialTheme.typography.bodyMedium
+                                                    )
+                                                }
                                             }
                                         }
                                     }

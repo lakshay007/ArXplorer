@@ -82,7 +82,7 @@ fun AiPaperBottomSheet(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)
-                    .systemBarsPadding()
+                    .navigationBarsPadding()
                     .imePadding()
             ) {
                 // Header with close button
@@ -178,14 +178,15 @@ fun AiPaperBottomSheet(
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 32.dp),
+                            .padding(bottom = 30.dp),
                         shape = RoundedCornerShape(28.dp),
                         color = colors.surfaceVariant.copy(alpha = 0.3f),
                         tonalElevation = 2.dp
                     ) {
                         Row(
                             modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .imePadding(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
