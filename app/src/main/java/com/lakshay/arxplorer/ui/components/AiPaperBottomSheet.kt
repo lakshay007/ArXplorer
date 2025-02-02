@@ -67,36 +67,66 @@ fun AiPaperBottomSheet(
         }
     }
 
-    Dialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
-        )
+        sheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = true
+        ),
+        dragHandle = { 
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                color = colors.background
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .width(32.dp)
+                            .height(4.dp),
+                        color = colors.surfaceVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(2.dp)
+                    ) {}
+                }
+            }
+        },
+        containerColor = colors.background,
+        windowInsets = WindowInsets(0),
+        modifier = Modifier.fillMaxSize()
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = colors.background
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp)
-                    .navigationBarsPadding()
-                    .imePadding()
+                    .padding(top = 16.dp)
             ) {
-                // Header with close button
+                // Header
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (isAiChat) "Chat about Paper" else "Paper Summary",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textPrimary
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isAiChat) "Chat about Paper" else "Paper Summary",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                        Text(
+                            text = paper.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                            maxLines = 1
+                        )
+                    }
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier
@@ -111,23 +141,12 @@ fun AiPaperBottomSheet(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Paper title for reference
-                Text(
-                    text = paper.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = colors.textSecondary,
-                    maxLines = 2
-                )
-
                 if (isAiChat) {
-                    Spacer(modifier = Modifier.height(16.dp))
-
                     // Prompt chips
                     LazyRow(
+                        modifier = Modifier.padding(top = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(vertical = 8.dp)
+                        contentPadding = PaddingValues(horizontal = 16.dp)
                     ) {
                         items(prompts) { prompt ->
                             SuggestionChip(
@@ -143,109 +162,117 @@ fun AiPaperBottomSheet(
                 }
 
                 // Messages
-                LazyColumn(
+                Box(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth(),
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp)
+                        .fillMaxWidth()
                 ) {
-                    if (chatState.messages.isEmpty() && !chatState.isLoading) {
-                        item {
-                            Text(
-                                text = if (isAiChat) {
-                                    "Ask any questions about the paper. I'll help you understand it better!"
-                                } else {
-                                    "Generating summary..."
-                                },
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = colors.textSecondary
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 16.dp,
+                            bottom = if (isAiChat) 80.dp else 16.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (chatState.messages.isEmpty() && !chatState.isLoading) {
+                            item {
+                                Text(
+                                    text = if (isAiChat) {
+                                        "Ask any questions about the paper. I'll help you understand it better!"
+                                    } else {
+                                        "Generating summary..."
+                                    },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = colors.textSecondary
+                                )
+                            }
+                        }
+
+                        items(chatState.messages) { message ->
+                            ChatMessage(
+                                message = message,
+                                colors = colors
                             )
                         }
                     }
-
-                    items(chatState.messages) { message ->
-                        ChatMessage(
-                            message = message,
-                            colors = colors
-                        )
-                    }
                 }
+            }
 
-                // Input field
-                if (isAiChat) {
-                    Surface(
+            // Input field
+            if (isAiChat) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .navigationBarsPadding(),
+                    color = colors.background,
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 30.dp),
-                        shape = RoundedCornerShape(28.dp),
-                        color = colors.surfaceVariant.copy(alpha = 0.3f),
-                        tonalElevation = 2.dp
+                            .padding(16.dp)
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(colors.surfaceVariant.copy(alpha = 0.3f))
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .imePadding(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            TextField(
-                                value = userInput,
-                                onValueChange = { userInput = it },
-                                modifier = Modifier.weight(1f),
-                                placeholder = { Text("Type your question here...", color = colors.textSecondary.copy(alpha = 0.6f)) },
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    disabledContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent,
-                                    focusedTextColor = colors.textPrimary,
-                                    unfocusedTextColor = colors.textPrimary,
-                                    focusedPlaceholderColor = colors.textSecondary.copy(alpha = 0.6f),
-                                    unfocusedPlaceholderColor = colors.textSecondary.copy(alpha = 0.6f)
-                                ),
-                                keyboardOptions = KeyboardOptions(
-                                    imeAction = ImeAction.Send
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onSend = {
-                                        if (userInput.isNotBlank()) {
-                                            viewModel.sendMessage(paper, userInput)
-                                            userInput = ""
-                                            keyboardController?.hide()
-                                        }
-                                    }
-                                ),
-                                enabled = !chatState.isLoading
-                            )
-                            
-                            IconButton(
-                                onClick = {
+                        TextField(
+                            value = userInput,
+                            onValueChange = { userInput = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("Type your question here...", color = colors.textSecondary.copy(alpha = 0.6f)) },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                disabledContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                focusedTextColor = colors.textPrimary,
+                                unfocusedTextColor = colors.textPrimary
+                            ),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                            keyboardActions = KeyboardActions(
+                                onSend = {
                                     if (userInput.isNotBlank()) {
                                         viewModel.sendMessage(paper, userInput)
                                         userInput = ""
                                         keyboardController?.hide()
                                     }
-                                },
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (userInput.isBlank() || chatState.isLoading) 
-                                            colors.primary.copy(alpha = 0.5f) 
-                                        else colors.primary
-                                    ),
-                                enabled = userInput.isNotBlank() && !chatState.isLoading
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Send,
-                                    contentDescription = "Send",
-                                    tint = colors.background,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                                }
+                            ),
+                            enabled = !chatState.isLoading
+                        )
+                        
+                        IconButton(
+                            onClick = {
+                                if (userInput.isNotBlank()) {
+                                    viewModel.sendMessage(paper, userInput)
+                                    userInput = ""
+                                    keyboardController?.hide()
+                                }
+                            },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (userInput.isBlank() || chatState.isLoading) 
+                                        colors.primary.copy(alpha = 0.5f) 
+                                    else colors.primary
+                                ),
+                            enabled = userInput.isNotBlank() && !chatState.isLoading
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Send,
+                                contentDescription = "Send",
+                                tint = colors.background,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
                 }
