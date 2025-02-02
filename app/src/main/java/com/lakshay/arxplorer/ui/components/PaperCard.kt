@@ -33,6 +33,7 @@ import kotlinx.coroutines.withContext
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.clickable
 import com.lakshay.arxplorer.ui.theme.LocalAppColors
+import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +51,13 @@ fun PaperCard(
     var isCheckingSize by remember { mutableStateOf(false) }
     
     val coroutineScope = rememberCoroutineScope()
-    val client = remember { OkHttpClient() }
+    val client = remember { 
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build() 
+    }
     
     val chatViewModel: ChatViewModel = viewModel(
         factory = ChatViewModelFactory.getInstance()
