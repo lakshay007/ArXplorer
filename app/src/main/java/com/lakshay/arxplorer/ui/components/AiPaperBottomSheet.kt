@@ -53,10 +53,15 @@ fun AiPaperBottomSheet(
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // Auto-scroll to bottom when new messages arrive
-    LaunchedEffect(chatState.messages.size) {
+    // Auto-scroll to bottom when new messages arrive or when thinking state changes
+    LaunchedEffect(chatState.messages.size, chatState.messages.lastOrNull()?.isThinking) {
         if (chatState.messages.isNotEmpty()) {
-            listState.animateScrollToItem(chatState.messages.size - 1)
+            coroutineScope.launch {
+                listState.scrollToItem(chatState.messages.size - 1)
+                // Additional small delay to ensure the scroll completes
+                kotlinx.coroutines.delay(100)
+                listState.animateScrollToItem(chatState.messages.size - 1)
+            }
         }
     }
 
@@ -95,15 +100,14 @@ fun AiPaperBottomSheet(
         },
         containerColor = colors.background,
         windowInsets = WindowInsets(0),
+        shape = RoundedCornerShape(0.dp),
         modifier = Modifier.fillMaxSize()
     ) {
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 16.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
                 // Header
                 Row(
@@ -162,42 +166,39 @@ fun AiPaperBottomSheet(
                 }
 
                 // Messages
-                Box(
+                LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 16.dp,
+                        bottom = if (isAiChat) 120.dp else 16.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    reverseLayout = false
                 ) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = 16.dp,
-                            bottom = if (isAiChat) 80.dp else 16.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        if (chatState.messages.isEmpty() && !chatState.isLoading) {
-                            item {
-                                Text(
-                                    text = if (isAiChat) {
-                                        "Ask any questions about the paper. I'll help you understand it better!"
-                                    } else {
-                                        "Generating summary..."
-                                    },
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = colors.textSecondary
-                                )
-                            }
-                        }
-
-                        items(chatState.messages) { message ->
-                            ChatMessage(
-                                message = message,
-                                colors = colors
+                    if (chatState.messages.isEmpty() && !chatState.isLoading) {
+                        item {
+                            Text(
+                                text = if (isAiChat) {
+                                    "Ask any questions about the paper. I'll help you understand it better!"
+                                } else {
+                                    "Generating summary..."
+                                },
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.textSecondary
                             )
                         }
+                    }
+
+                    items(chatState.messages) { message ->
+                        ChatMessage(
+                            message = message,
+                            colors = colors
+                        )
                     }
                 }
             }
@@ -207,15 +208,15 @@ fun AiPaperBottomSheet(
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .navigationBarsPadding(),
+                        .fillMaxWidth(),
                     color = colors.background,
                     shadowElevation = 8.dp
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                            .navigationBarsPadding()
                             .clip(RoundedCornerShape(28.dp))
                             .background(colors.surfaceVariant.copy(alpha = 0.3f))
                             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -299,32 +300,48 @@ private fun ChatMessage(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = when {
-                    message.isError -> colors.surfaceVariant.copy(alpha = 0.3f)
-                    message.isUser -> colors.primary.copy(alpha = 0.1f)
-                    else -> colors.surfaceVariant.copy(alpha = 0.3f)
-                }
-            ) {
-                Text(
-                    text = message.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = when {
-                        message.isError -> Color.Red
-                        message.isUser -> colors.textPrimary
-                        else -> colors.textPrimary
-                    },
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
-            
             if (message.isThinking) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    color = colors.primary,
-                    strokeWidth = 2.dp
-                )
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = colors.surfaceVariant.copy(alpha = 0.3f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = colors.primary,
+                            strokeWidth = 2.dp
+                        )
+                        Text(
+                            text = "ArXia is thinking...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textPrimary
+                        )
+                    }
+                }
+            } else {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = when {
+                        message.isError -> colors.surfaceVariant.copy(alpha = 0.3f)
+                        message.isUser -> colors.primary.copy(alpha = 0.1f)
+                        else -> colors.surfaceVariant.copy(alpha = 0.3f)
+                    }
+                ) {
+                    Text(
+                        text = message.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = when {
+                            message.isError -> Color.Red
+                            message.isUser -> colors.textPrimary
+                            else -> colors.textPrimary
+                        },
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             }
         }
     }
