@@ -40,6 +40,7 @@ import java.io.File
 import java.io.FileOutputStream
 import androidx.hilt.navigation.compose.hiltViewModel
 import java.util.concurrent.TimeUnit
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -235,13 +236,15 @@ fun PaperScreen(
                 modifier = Modifier.align(Alignment.TopCenter)
             ) {
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                    tonalElevation = 3.dp
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    color = Color.Black.copy(alpha = 0.7f),
+                    tonalElevation = 0.dp
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .statusBarsPadding()
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -250,7 +253,8 @@ fun PaperScreen(
                             Icon(
                                 Icons.Default.ArrowBack,
                                 contentDescription = "Back",
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(24.dp),
+                                tint = Color.White
                             )
                         }
                         
@@ -260,19 +264,22 @@ fun PaperScreen(
                             IconButton(onClick = { showAbstract = !showAbstract }) {
                                 Icon(
                                     if (showAbstract) Icons.Default.Description else Icons.Default.Info,
-                                    contentDescription = if (showAbstract) "Show PDF" else "Show Abstract"
+                                    contentDescription = if (showAbstract) "Show PDF" else "Show Abstract",
+                                    tint = Color.White
                                 )
                             }
                             IconButton(onClick = { onDownloadClick(currentPaper.pdfUrl) }) {
                                 Icon(
                                     Icons.Default.Download,
-                                    contentDescription = "Download PDF"
+                                    contentDescription = "Download PDF",
+                                    tint = Color.White
                                 )
                             }
                             IconButton(onClick = { onShareClick(currentPaper) }) {
                                 Icon(
                                     Icons.Default.Share,
-                                    contentDescription = "Share"
+                                    contentDescription = "Share",
+                                    tint = Color.White
                                 )
                             }
                         }
