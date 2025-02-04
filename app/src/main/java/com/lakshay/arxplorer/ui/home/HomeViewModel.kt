@@ -11,6 +11,7 @@ import com.lakshay.arxplorer.data.repository.ArxivRepository
 import com.lakshay.arxplorer.data.repository.TimePeriod
 import com.lakshay.arxplorer.ui.common.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -187,6 +188,9 @@ class HomeViewModel @Inject constructor(
                     currentMode = "new"
                     initializeData()
                 }
+                
+                // Wait a minimum time to show the refresh animation
+                delay(500)
             } finally {
                 _isRefreshing.value = false
             }
