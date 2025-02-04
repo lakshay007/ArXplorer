@@ -96,7 +96,7 @@ class ArxivRepository {
 
             // Fetch papers for all preferences in a single query
             coroutineScope {
-                // Combine all category codes into a single query with OR
+                // Combine all category codes into a single query with +
                 val categoryQuery = preferences
                     .mapNotNull { preference ->
                         val categoryCode = categoryMap[preference]
@@ -104,17 +104,18 @@ class ArxivRepository {
                             Log.w(TAG, "Unknown category preference: $preference")
                             null
                         } else {
-                            "cat:$categoryCode"
+                            categoryCode
                         }
                     }
-                    .joinToString(" OR ")
+                    .joinToString("+")
 
                 Log.d(TAG, "Fetching papers for combined categories: $categoryQuery")
                 val result = api.searchPapers(
-                    query = categoryQuery,
+                    query = "https://rss.arxiv.org/atom/$categoryQuery",
                     maxResults = INITIAL_BATCH_SIZE,
                     sortBy = "submittedDate",
-                    sortOrder = "descending"
+                    sortOrder = "descending",
+                    isRssQuery = true
                 )
                 
                 val papers = result.getOrNull() ?: emptyList()

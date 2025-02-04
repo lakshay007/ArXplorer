@@ -23,15 +23,16 @@ class ArxivApi {
         maxResults: Int = 10,
         sortBy: String = "submittedDate",
         sortOrder: String = "descending",
-        isIdQuery: Boolean = false
+        isIdQuery: Boolean = false,
+        isRssQuery: Boolean = false
     ): Result<List<ArxivPaper>> = withContext(Dispatchers.IO) {
         try {
             delay(100)
             
-            val searchUrl = if (isIdQuery) {
-                "$baseUrl?id_list=$query"
-            } else {
-                buildSearchUrl(query, start, maxResults, sortBy, sortOrder)
+            val searchUrl = when {
+                isRssQuery -> query
+                isIdQuery -> "$baseUrl?id_list=$query"
+                else -> buildSearchUrl(query, start, maxResults, sortBy, sortOrder)
             }
             
             Log.d(TAG, "Making API request to: $searchUrl")
@@ -97,7 +98,13 @@ class ArxivApi {
     }
 
     private fun parsePaper(entry: Element): ArxivPaper {
-        val id = entry.getElementsByTagName("id").item(0).textContent.split("/").last()
+        val rawId = entry.getElementsByTagName("id").item(0).textContent
+        val id = when {
+            rawId.contains("oai:arXiv.org:") -> rawId.substringAfter("oai:arXiv.org:")
+            rawId.contains("/abs/") -> rawId.substringAfterLast("/")
+            else -> rawId.split("/").last()
+        }
+        
         val title = entry.getElementsByTagName("title").item(0).textContent.trim()
         val summary = entry.getElementsByTagName("summary").item(0).textContent.trim()
         val published = parseDateTime(entry.getElementsByTagName("published").item(0).textContent)
@@ -112,8 +119,13 @@ class ArxivApi {
         val links = entry.getElementsByTagName("link")
         val pdfUrl = (0 until links.length)
             .map { links.item(it) as Element }
-            .first { it.getAttribute("title") == "pdf" }
-            .getAttribute("href")
+            .firstOrNull { 
+                it.getAttribute("title") == "pdf" || 
+                it.getAttribute("type") == "application/pdf" ||
+                it.getAttribute("href").endsWith(".pdf")
+            }
+            ?.getAttribute("href")
+            ?: "https://arxiv.org/pdf/$id.pdf" // Fallback URL construction using clean ID
 
         val categories = entry.getElementsByTagName("category").let { categoryNodes ->
             (0 until categoryNodes.length).map { i ->
@@ -121,7 +133,7 @@ class ArxivApi {
             }
         }
 
-        val primaryCategory = categories.first()
+        val primaryCategory = categories.firstOrNull() ?: id.split(".").first()
         
         // Optional fields
         val doi = entry.getElementsByTagName("arxiv:doi").let { 
