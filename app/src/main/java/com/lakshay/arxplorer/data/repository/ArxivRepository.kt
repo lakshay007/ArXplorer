@@ -257,25 +257,24 @@ class ArxivRepository {
             }
 
             // Get papers for first batch
-            val paperMap = mutableMapOf<String, ArxivPaper>()
-            allPaperIds.take(PAPERS_PER_PAGE).forEach { arxivId ->
-                try {
-                    val paper = api.searchPapers(
-                        query = arxivId,
-                        maxResults = 1,
-                        isIdQuery = true
-                    ).getOrNull()?.firstOrNull()
-                    
-                    if (paper != null) {
-                        paperMap[arxivId] = paper
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error fetching paper $arxivId", e)
-                }
+            val paperIds = allPaperIds.take(PAPERS_PER_PAGE)
+            Log.d(TAG, "Fetching papers for IDs: $paperIds")
+            
+            val result = api.searchPapers(
+                query = paperIds.joinToString(","),
+                maxResults = paperIds.size,
+                isIdQuery = true
+            )
+            
+            val papers = result.getOrNull() ?: emptyList()
+            
+            // Create a map of arXiv ID to paper for ordering
+            val paperMap = papers.associateBy { paper -> 
+                paper.id.split("v").first() // Remove version number if present
             }
 
             // Reorder papers according to Semantic Scholar order
-            val orderedPapers = allPaperIds.take(PAPERS_PER_PAGE).mapNotNull { arxivId ->
+            val orderedPapers = paperIds.mapNotNull { arxivId ->
                 paperMap[arxivId].also { paper ->
                     if (paper == null) {
                         Log.w(TAG, "Could not find paper for arXiv ID: $arxivId")
@@ -403,22 +402,18 @@ class ArxivRepository {
             val nextBatch = remainingPaperIds.take(PAPERS_PER_PAGE)
             remainingPaperIds = remainingPaperIds.drop(PAPERS_PER_PAGE)
 
-            // Fetch papers for the next batch of IDs
-            val paperMap = mutableMapOf<String, ArxivPaper>()
-            nextBatch.forEach { arxivId ->
-                try {
-                    val paper = api.searchPapers(
-                        query = arxivId,
-                        maxResults = 1,
-                        isIdQuery = true
-                    ).getOrNull()?.firstOrNull()
-                    
-                    if (paper != null) {
-                        paperMap[arxivId] = paper
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error fetching paper $arxivId", e)
-                }
+            // Fetch all papers in a single API call
+            val result = api.searchPapers(
+                query = nextBatch.joinToString(","),
+                maxResults = nextBatch.size,
+                isIdQuery = true
+            )
+            
+            val papers = result.getOrNull() ?: emptyList()
+            
+            // Create a map of arXiv ID to paper for ordering
+            val paperMap = papers.associateBy { paper -> 
+                paper.id.split("v").first() // Remove version number if present
             }
 
             // Reorder papers according to Semantic Scholar order
