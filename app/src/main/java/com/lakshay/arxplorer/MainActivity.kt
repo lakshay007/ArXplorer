@@ -41,6 +41,7 @@ import javax.inject.Inject
 import com.lakshay.arxplorer.ui.theme.ThemeViewModel
 import androidx.activity.OnBackPressedCallback
 import androidx.navigation.NavHostController
+import com.lakshay.arxplorer.ui.common.UiState
 
 private const val TAG = "MainActivity"
 private const val RC_SIGN_IN = 9001
@@ -95,29 +96,34 @@ class MainActivity : ComponentActivity() {
         setContent {
             val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
             val navController = rememberNavController().also { navController = it }
+            val authState by authViewModel.authState.collectAsState()
+            var showSplash by remember { mutableStateOf(true) }
+            
+            // Initialize data and check auth state
+            LaunchedEffect(Unit) {
+                try {
+                    // Wait for auth state to be determined
+                    while (authState == AuthState.Initial || authState == AuthState.Loading) {
+                        delay(100)
+                    }
+                    
+                    delay(500) // Minimum splash screen duration
+                    showSplash = false
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error during initialization", e)
+                    showSplash = false
+                }
+            }
             
             ArXplorerTheme(darkTheme = isDarkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val authState by authViewModel.authState.collectAsState()
-                    var showSplash by remember { mutableStateOf(true) }
-
-                    LaunchedEffect(authState) {
-                        if (authState !is AuthState.Loading) {
-                            delay(1000) // Show splash for at least 1 second
-                            showSplash = false
-                        }
-                    }
-
                     if (showSplash) {
                         SplashScreen()
                     } else {
                         when (authState) {
-                            is AuthState.Loading -> {
-                                LoadingScreen()
-                            }
                             is AuthState.Authenticated -> {
                                 ArXplorerApp(
                                     homeViewModel = homeViewModel,
@@ -141,7 +147,8 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                             }
-                            AuthState.Initial -> {
+                            else -> {
+                                // This shouldn't happen as we wait for initialization
                                 LoadingScreen()
                             }
                         }

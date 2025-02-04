@@ -38,6 +38,11 @@ fun ArXplorerApp(
     var showPreferences by remember { mutableStateOf(false) }
     val colors = LocalAppColors.current
 
+    // Initialize data when app starts
+    LaunchedEffect(Unit) {
+        homeViewModel.initializeData()
+    }
+
     CompositionLocalProvider(LocalAppColors provides colors) {
         Surface(
             modifier = modifier.fillMaxSize(),

@@ -43,35 +43,32 @@ class HomeViewModel @Inject constructor(
 
     private var currentMode = "new"  // Track current mode
 
-    init {
+    fun initializeData() {
         viewModelScope.launch {
-            checkPreferencesAndLoadPapers()
-        }
-    }
-
-    private suspend fun checkPreferencesAndLoadPapers() {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            _uiState.value = UiState.Error("User not authenticated")
-            return
-        }
-
-        // Check if user has preferences
-        if (!arxivRepository.hasUserPreferences(userId)) {
-            _showPreferencesScreen.value = true
-            return
-        }
-
-        // Load new papers by default
-        arxivRepository.fetchPapersForUserPreferences(userId).fold(
-            onSuccess = { papers ->
-                _uiState.value = UiState.Success(papers)
-                loadCommentCounts(papers)
-            },
-            onFailure = { error ->
-                _uiState.value = UiState.Error(error.message ?: "Unknown error")
+            val userId = auth.currentUser?.uid
+            if (userId == null) {
+                _uiState.value = UiState.Error("User not authenticated")
+                return@launch
             }
-        )
+
+            // Check if user has preferences
+            if (!arxivRepository.hasUserPreferences(userId)) {
+                _showPreferencesScreen.value = true
+                _uiState.value = UiState.Empty
+                return@launch
+            }
+
+            // Load new papers
+            arxivRepository.fetchPapersForUserPreferences(userId).fold(
+                onSuccess = { papers ->
+                    _uiState.value = UiState.Success(papers)
+                    loadCommentCounts(papers)
+                },
+                onFailure = { error ->
+                    _uiState.value = UiState.Error(error.message ?: "Unknown error")
+                }
+            )
+        }
     }
 
     fun loadPapers() {
@@ -186,9 +183,9 @@ class HomeViewModel @Inject constructor(
                     // Re-fetch top papers with current time period
                     loadTopPapers(TimePeriod.THIS_WEEK) // Default to THIS_WEEK when refreshing top papers
                 } else {
-                    // For new papers, use fetchPapersForUserPreferences
+                    // For new papers, use initializeData
                     currentMode = "new"
-                    checkPreferencesAndLoadPapers()
+                    initializeData()
                 }
             } finally {
                 _isRefreshing.value = false

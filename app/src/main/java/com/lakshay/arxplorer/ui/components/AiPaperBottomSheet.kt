@@ -316,7 +316,7 @@ private fun ChatMessage(
                             strokeWidth = 2.dp
                         )
                         Text(
-                            text = "ArXia is thinking...",
+                            text = "ArXai is thinking...",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textPrimary
                         )

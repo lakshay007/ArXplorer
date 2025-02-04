@@ -94,45 +94,42 @@ class ArxivRepository {
 
             Log.d(TAG, "Found preferences: $preferences")
 
-            // Fetch papers for each preference in parallel
+            // Fetch papers for all preferences in a single query
             coroutineScope {
-                val deferredPapers: List<Deferred<List<ArxivPaper>>> = preferences
+                // Combine all category codes into a single query with OR
+                val categoryQuery = preferences
                     .mapNotNull { preference ->
                         val categoryCode = categoryMap[preference]
                         if (categoryCode == null) {
                             Log.w(TAG, "Unknown category preference: $preference")
                             null
                         } else {
-                            async {
-                                Log.d(TAG, "Fetching papers for category: $categoryCode (from: $preference)")
-                                // For new papers, we directly use ArxivApi with submittedDate sorting
-                                val result = api.searchPapers(
-                                    query = "cat:$categoryCode",
-                                    maxResults = INITIAL_BATCH_SIZE,
-                                    sortBy = "submittedDate",
-                                    sortOrder = "descending"
-                                )
-                                Log.d(TAG, "Result for $categoryCode: ${result.getOrNull()?.size ?: 0} papers")
-                                result.getOrNull() ?: emptyList()
-                            }
+                            "cat:$categoryCode"
                         }
                     }
+                    .joinToString(" OR ")
 
-                val papers: List<List<ArxivPaper>> = deferredPapers.awaitAll()
-                val allPapers: List<ArxivPaper> = papers.flatten()
-                    .sortedByDescending { it.publishedDate }
-                    .distinctBy { it.id }
+                Log.d(TAG, "Fetching papers for combined categories: $categoryQuery")
+                val result = api.searchPapers(
+                    query = categoryQuery,
+                    maxResults = INITIAL_BATCH_SIZE,
+                    sortBy = "submittedDate",
+                    sortOrder = "descending"
+                )
+                
+                val papers = result.getOrNull() ?: emptyList()
+                Log.d(TAG, "Result: ${papers.size} papers")
 
                 // Store remaining papers for later
-                if (allPapers.size > PAPERS_PER_PAGE) {
-                    remainingNewPapers = allPapers.drop(PAPERS_PER_PAGE)
+                if (papers.size > PAPERS_PER_PAGE) {
+                    remainingNewPapers = papers.drop(PAPERS_PER_PAGE)
                     Log.d(TAG, "Stored ${remainingNewPapers.size} papers for later loading")
                 } else {
                     remainingNewPapers = emptyList()
                 }
 
                 // Return first page
-                val firstPage = allPapers.take(PAPERS_PER_PAGE)
+                val firstPage = papers.take(PAPERS_PER_PAGE)
                 Log.d(TAG, "Returning first ${firstPage.size} papers")
                 Result.success(firstPage)
             }

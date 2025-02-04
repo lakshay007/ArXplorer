@@ -65,7 +65,6 @@ class ArxivApi {
         val connection = url.openConnection()
         connection.setRequestProperty("User-Agent", "ArXplorer/1.0 (Android App)")
 
-        Log.d(TAG, "Making request to: $urlString")
         val factory = DocumentBuilderFactory.newInstance()
         val builder = factory.newDocumentBuilder()
         val inputStream = connection.getInputStream()

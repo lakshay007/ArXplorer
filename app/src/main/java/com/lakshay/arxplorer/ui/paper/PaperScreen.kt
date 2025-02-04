@@ -10,13 +10,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,9 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.github.barteksc.pdfviewer.PDFView
 import com.lakshay.arxplorer.data.model.ArxivPaper
@@ -55,7 +49,6 @@ fun PaperScreen(
     val coroutineScope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var showAbstract by remember { mutableStateOf(false) }
     var showControls by remember { mutableStateOf(true) }
     var pdfFile by remember { mutableStateOf<File?>(null) }
     var isDownloading by remember { mutableStateOf(false) }
@@ -99,132 +92,98 @@ fun PaperScreen(
                     }
                 }
         ) {
-            if (showAbstract) {
-                // Abstract View
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = currentPaper.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = currentPaper.authors.joinToString(", "),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Abstract",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = currentPaper.abstract,
-                        style = MaterialTheme.typography.bodyMedium,
-                        lineHeight = 24.sp
+            // PDF Viewer
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface)
+            ) {
+                pdfFile?.let { file ->
+                    AndroidView(
+                        factory = { context ->
+                            PDFView(context, null).apply {
+                                layoutParams = FrameLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                                setOnClickListener {
+                                    showControls = true
+                                }
+                                fromFile(file)
+                                    .enableSwipe(true)
+                                    .swipeHorizontal(false)
+                                    .enableDoubletap(true)
+                                    .enableAnnotationRendering(true)
+                                    .spacing(0)
+                                    .autoSpacing(false)
+                                    .pageFitPolicy(com.github.barteksc.pdfviewer.util.FitPolicy.WIDTH)
+                                    .pageSnap(true)
+                                    .pageFling(true)
+                                    .nightMode(false)
+                                    .defaultPage(0)
+                                    .onLoad {
+                                        isLoading = false
+                                        Log.d("PaperScreen", "PDF loaded successfully")
+                                    }
+                                    .onError { t ->
+                                        isLoading = false
+                                        error = "Failed to load PDF: ${t.message}"
+                                        Log.e("PaperScreen", "Failed to load PDF", t)
+                                    }
+                                    .onPageError { page, t ->
+                                        Log.e("PaperScreen", "Error on page $page", t)
+                                    }
+                                    .load()
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
-            } else {
-                // PDF Viewer
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surface)
-                ) {
-                    pdfFile?.let { file ->
-                        AndroidView(
-                            factory = { context ->
-                                PDFView(context, null).apply {
-                                    layoutParams = FrameLayout.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                    )
-                                    setOnClickListener {
-                                        showControls = true
-                                    }
-                                    fromFile(file)
-                                        .enableSwipe(true)
-                                        .swipeHorizontal(false)
-                                        .enableDoubletap(true)
-                                        .enableAnnotationRendering(true)
-                                        .spacing(0)
-                                        .autoSpacing(false)
-                                        .pageFitPolicy(com.github.barteksc.pdfviewer.util.FitPolicy.WIDTH)
-                                        .pageSnap(true)
-                                        .pageFling(true)
-                                        .nightMode(false)
-                                        .defaultPage(0)
-                                        .onLoad {
-                                            isLoading = false
-                                            Log.d("PaperScreen", "PDF loaded successfully")
-                                        }
-                                        .onError { t ->
-                                            isLoading = false
-                                            error = "Failed to load PDF: ${t.message}"
-                                            Log.e("PaperScreen", "Failed to load PDF", t)
-                                        }
-                                        .onPageError { page, t ->
-                                            Log.e("PaperScreen", "Error on page $page", t)
-                                        }
-                                        .load()
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
 
-                    if (isLoading || isDownloading) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+                if (isLoading || isDownloading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.size(100.dp)
                             ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.size(100.dp)
-                                ) {
-                                    CircularProgressIndicator(
-                                        progress = if (isDownloading) downloadProgress else 1f,
-                                        modifier = Modifier.fillMaxSize(),
-                                        strokeWidth = 4.dp,
+                                CircularProgressIndicator(
+                                    progress = if (isDownloading) downloadProgress else 1f,
+                                    modifier = Modifier.fillMaxSize(),
+                                    strokeWidth = 4.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                if (isDownloading) {
+                                    Text(
+                                        text = "${(downloadProgress * 100).toInt()}%",
+                                        style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.primary
                                     )
-                                    if (isDownloading) {
-                                        Text(
-                                            text = "${(downloadProgress * 100).toInt()}%",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
                                 }
-                                Text(
-                                    text = "Loading PDF...",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
                             }
+                            Text(
+                                text = "Loading PDF...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
+                }
 
-                    error?.let {
-                        Text(
-                            text = it,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(16.dp)
-                        )
-                    }
+                error?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(16.dp)
+                    )
                 }
             }
 
@@ -261,13 +220,6 @@ fun PaperScreen(
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            IconButton(onClick = { showAbstract = !showAbstract }) {
-                                Icon(
-                                    if (showAbstract) Icons.Default.Description else Icons.Default.Info,
-                                    contentDescription = if (showAbstract) "Show PDF" else "Show Abstract",
-                                    tint = Color.White
-                                )
-                            }
                             IconButton(onClick = { onDownloadClick(currentPaper.pdfUrl) }) {
                                 Icon(
                                     Icons.Default.Download,
