@@ -96,7 +96,7 @@ class ArxivRepository {
 
             // Fetch papers for all preferences in a single query
             coroutineScope {
-                // Combine all category codes into a single query with +
+                // Combine all category codes into a single query with plus signs
                 val categoryQuery = preferences
                     .mapNotNull { preference ->
                         val categoryCode = categoryMap[preference]
@@ -110,15 +110,53 @@ class ArxivRepository {
                     .joinToString("+")
 
                 Log.d(TAG, "Fetching papers for combined categories: $categoryQuery")
-                val result = api.searchPapers(
-                    query = "https://rss.arxiv.org/atom/$categoryQuery",
+                
+                // First try RSS feed
+                val rssUrl = "https://rss.arxiv.org/atom/$categoryQuery"
+                Log.d(TAG, "Trying RSS feed URL: $rssUrl")
+                
+                val rssResult = api.searchPapers(
+                    query = rssUrl,
                     maxResults = INITIAL_BATCH_SIZE,
                     sortBy = "submittedDate",
                     sortOrder = "descending",
                     isRssQuery = true
                 )
-                
-                val papers = result.getOrNull() ?: emptyList()
+
+                val papers = when {
+                    rssResult.isSuccess && rssResult.getOrNull()?.isNotEmpty() == true -> {
+                        Log.d(TAG, "Successfully fetched ${rssResult.getOrNull()?.size} papers from RSS feed")
+                        rssResult.getOrNull() ?: emptyList()
+                    }
+                    else -> {
+                        // If RSS feed is empty or failed, fall back to regular API
+                        val errorMessage = if (rssResult.isFailure) {
+                            rssResult.exceptionOrNull()?.message ?: "Unknown error"
+                        } else {
+                            "RSS feed returned empty result"
+                        }
+                        Log.d(TAG, "RSS feed failed: $errorMessage, falling back to regular API")
+                        
+                        // Convert categories to arXiv search query format
+                        val searchQuery = categoryQuery.split("+")
+                            .joinToString(" OR ") { "cat:$it" }
+                        Log.d(TAG, "Falling back to arXiv API with query: $searchQuery")
+                        
+                        api.searchPapers(
+                            query = searchQuery,
+                            maxResults = INITIAL_BATCH_SIZE,
+                            sortBy = "submittedDate",
+                            sortOrder = "descending"
+                        ).also { result ->
+                            if (result.isSuccess) {
+                                Log.d(TAG, "Successfully fetched ${result.getOrNull()?.size} papers from arXiv API")
+                            } else {
+                                Log.e(TAG, "ArXiv API fallback also failed: ${result.exceptionOrNull()?.message}")
+                            }
+                        }.getOrNull() ?: emptyList()
+                    }
+                }
+
                 Log.d(TAG, "Result: ${papers.size} papers")
 
                 // Store remaining papers for later
