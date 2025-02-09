@@ -17,6 +17,20 @@ private const val TAG = "ArxivApi"
 class ArxivApi {
     private val baseUrl = "https://export.arxiv.org/api/query"
 
+    private fun formatPaperId(id: String): String {
+        // Handle old-style IDs (pre-2007)
+        return if (id.matches(Regex("^\\d{7}$"))) {
+            // Convert YYMMNNN to YYMM.NNNNN format
+            // For old papers: YYMMNNN where YY=year, MM=month, NNN=number
+            val year = "19" + id.substring(0, 2)
+            val month = id.substring(2, 4)
+            val number = id.substring(4).padStart(5, '0') // Ensure 5 digits for the number part
+            "$year.$number"
+        } else {
+            id
+        }
+    }
+
     suspend fun searchPapers(
         query: String,
         start: Int = 0,
@@ -31,7 +45,10 @@ class ArxivApi {
             
             val searchUrl = when {
                 isRssQuery -> query
-                isIdQuery -> "$baseUrl?id_list=$query"
+                isIdQuery -> {
+                    val formattedIds = query.split(",").map { formatPaperId(it) }.joinToString(",")
+                    "$baseUrl?id_list=$formattedIds"
+                }
                 else -> buildSearchUrl(query, start, maxResults, sortBy, sortOrder)
             }
             
