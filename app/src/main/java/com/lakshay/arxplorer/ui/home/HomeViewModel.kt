@@ -46,6 +46,7 @@ class HomeViewModel @Inject constructor(
 
     fun initializeData() {
         viewModelScope.launch {
+            _uiState.value = UiState.Loading
             val userId = auth.currentUser?.uid
             if (userId == null) {
                 _uiState.value = UiState.Error("User not authenticated")
@@ -55,15 +56,18 @@ class HomeViewModel @Inject constructor(
             // Check if user has preferences
             if (!arxivRepository.hasUserPreferences(userId)) {
                 _showPreferencesScreen.value = true
-                _uiState.value = UiState.Empty
                 return@launch
             }
 
-            // Load new papers
+            // Keep loading state while fetching papers
             arxivRepository.fetchPapersForUserPreferences(userId).fold(
                 onSuccess = { papers ->
-                    _uiState.value = UiState.Success(papers)
-                    loadCommentCounts(papers)
+                    if (papers.isEmpty()) {
+                        _uiState.value = UiState.Empty
+                    } else {
+                        _uiState.value = UiState.Success(papers)
+                        loadCommentCounts(papers)
+                    }
                 },
                 onFailure = { error ->
                     _uiState.value = UiState.Error(error.message ?: "Unknown error")
@@ -173,6 +177,7 @@ class HomeViewModel @Inject constructor(
     fun refreshPapers() {
         viewModelScope.launch {
             _isRefreshing.value = true
+            _uiState.value = UiState.Loading  // Add loading state here too
             try {
                 _commentCounts.value = emptyMap()
                 _showPreferencesScreen.value = false

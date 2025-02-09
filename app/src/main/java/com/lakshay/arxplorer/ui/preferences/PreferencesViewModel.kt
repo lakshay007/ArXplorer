@@ -66,24 +66,17 @@ class PreferencesViewModel : ViewModel() {
     fun savePreferences(preferences: List<String>, onComplete: () -> Unit) {
         viewModelScope.launch {
             try {
+                _preferencesState.value = PreferencesState.Loading
                 val userId = auth.currentUser?.uid
                 if (userId == null) {
-                    Log.e(TAG, "No authenticated user found while saving preferences")
                     _preferencesState.value = PreferencesState.Error("User not authenticated")
                     return@launch
                 }
 
                 Log.d(TAG, "Saving preferences for user: $userId")
-                Log.d(TAG, "Preferences to save: $preferences")
-                
-                val preferencesMap = hashMapOf(
-                    "preferences" to preferences,
-                    "timestamp" to System.currentTimeMillis()
-                )
-
                 firestore.collection("user_preferences")
                     .document(userId)
-                    .set(preferencesMap)
+                    .set(mapOf("preferences" to preferences))
                     .await()
 
                 Log.d(TAG, "Successfully saved preferences")
