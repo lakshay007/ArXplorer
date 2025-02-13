@@ -123,7 +123,17 @@ class ArxivApi {
         }
         
         val title = entry.getElementsByTagName("title").item(0).textContent.trim()
-        val summary = entry.getElementsByTagName("summary").item(0).textContent.trim()
+        val rawSummary = entry.getElementsByTagName("summary").item(0).textContent.trim()
+        
+        // Clean up the summary by removing arXiv ID, announcement type, and labels
+        val summary = rawSummary
+            .replace(Regex("^\\s*arXiv:\\s*\\S+\\s*"), "") // Remove arXiv ID from start
+            .replace(Regex("(?i)Announce Type:\\s*[^\\n]*"), "") // Remove announcement type without requiring newline
+            .replace(Regex("(?i)\\s*Abstract:\\s*"), "") // Remove Abstract: label
+            .replace(Regex("^\\s*\\([^)]*\\)\\s*"), "") // Remove parenthetical announcement type
+            .replace(Regex("^\\s*New\\s*"), "") // Remove standalone "New" text
+            .trim()
+            
         val published = parseDateTime(entry.getElementsByTagName("published").item(0).textContent)
         val updated = parseDateTime(entry.getElementsByTagName("updated").item(0).textContent)
         
