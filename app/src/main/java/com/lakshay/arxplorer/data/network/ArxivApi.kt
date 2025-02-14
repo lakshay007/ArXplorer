@@ -38,7 +38,8 @@ class ArxivApi {
         sortBy: String = "submittedDate",
         sortOrder: String = "descending",
         isIdQuery: Boolean = false,
-        isRssQuery: Boolean = false
+        isRssQuery: Boolean = false,
+        isTitleSearch: Boolean = false
     ): Result<List<ArxivPaper>> = withContext(Dispatchers.IO) {
         try {
             delay(100)
@@ -49,7 +50,7 @@ class ArxivApi {
                     val formattedIds = query.split(",").map { formatPaperId(it) }.joinToString(",")
                     "$baseUrl?id_list=$formattedIds"
                 }
-                else -> buildSearchUrl(query, start, maxResults, sortBy, sortOrder)
+                else -> buildSearchUrl(query, start, maxResults, sortBy, sortOrder, isTitleSearch)
             }
             
             Log.d(TAG, "Making API request to: $searchUrl")
@@ -68,13 +69,26 @@ class ArxivApi {
         start: Int,
         maxResults: Int,
         sortBy: String,
-        sortOrder: String
+        sortOrder: String,
+        isTitleSearch: Boolean
     ): String {
-        return "$baseUrl?search_query=$query" +
+        val formattedQuery = if (isTitleSearch) {
+            // For title search, wrap the entire query in quotes
+            "ti:\"${query.trim()}\""
+        } else {
+            // For general search, prefix each term with all: and join with +AND+
+            query.trim()
+                .split("\\s+".toRegex())
+                .filter { it.isNotEmpty() }
+                .map { java.net.URLEncoder.encode("all:$it", "UTF-8") }
+                .joinToString("+AND+")
+        }
+            
+        return "$baseUrl?search_query=$formattedQuery" +
                "&start=$start" +
                "&max_results=$maxResults" +
-               "&sortBy=$sortBy" +
-               "&sortOrder=$sortOrder" +
+               "&sortBy=relevance" +
+               "&sortOrder=descending" +
                "&include_cross_list=true"
     }
 

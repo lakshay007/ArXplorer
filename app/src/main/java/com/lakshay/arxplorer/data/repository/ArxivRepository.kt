@@ -390,31 +390,17 @@ class ArxivRepository {
 
     suspend fun searchArxiv(
         query: String,
-        maxResults: Int = 20,
-        sortBy: String = "all",
-        sortOrder: String = "descending"
+        sortBy: String = "relevance",
+        sortOrder: String = "descending",
+        isTitleSearch: Boolean = false
     ): Result<List<ArxivPaper>> {
-        return try {
-            Log.d(TAG, "Searching arXiv for query: $query")
-            // Construct search query based on sortBy parameter
-            val searchQuery = when (sortBy) {
-                "title" -> "ti:\"$query\""  // Add quotes around title search
-                "all" -> "all:\"$query\""   // Add quotes around all fields search
-                else -> "all:\"$query\""    // Default to quoted all fields search
-            }
-            
-            Log.d(TAG, "Constructed arXiv query: $searchQuery")
-            
-            api.searchPapers(
-                query = searchQuery,
-                maxResults = maxResults,
-                sortBy = if (sortBy in listOf("all", "title")) "relevance" else sortBy,
-                sortOrder = sortOrder
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Error searching papers", e)
-            Result.failure(e)
-        }
+        return api.searchPapers(
+            query = query,
+            maxResults = INITIAL_BATCH_SIZE,
+            sortBy = sortBy,
+            sortOrder = sortOrder,
+            isTitleSearch = isTitleSearch
+        )
     }
 
     suspend fun getPaperById(paperId: String): ArxivPaper {

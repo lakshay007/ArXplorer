@@ -215,10 +215,12 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = UiState.Loading
             try {
+                val isTitleSearch = sortBy == "title"
                 val result = arxivRepository.searchArxiv(
                     query = query,
                     sortBy = sortBy,
-                    sortOrder = sortOrder
+                    sortOrder = sortOrder,
+                    isTitleSearch = isTitleSearch
                 )
                 result.fold(
                     onSuccess = { papers ->
