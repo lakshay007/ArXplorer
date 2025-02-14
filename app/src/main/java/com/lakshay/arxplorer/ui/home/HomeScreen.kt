@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
@@ -36,6 +38,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.lakshay.arxplorer.ui.theme.ThemeManager
 import com.lakshay.arxplorer.ui.theme.LocalAppColors
 import com.lakshay.arxplorer.ui.theme.ThemeViewModel
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +63,7 @@ fun HomeScreen(
     val isLoadingMore by homeViewModel.isLoadingMore.collectAsState()
     val isRefreshing by homeViewModel.isRefreshing.collectAsState()
     val commentCounts by homeViewModel.commentCounts.collectAsState()
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val sortByOptions = listOf(
         "All" to "all",
@@ -80,10 +84,11 @@ fun HomeScreen(
 
     fun performSearch() {
         homeViewModel.searchPapers(
-            query = searchQuery.trim(),
+            query = searchQuery,
             sortBy = selectedSortBy,
             sortOrder = selectedSortOrder
         )
+        keyboardController?.hide()
     }
 
     LaunchedEffect(showPreferences) {
@@ -142,7 +147,9 @@ fun HomeScreen(
             SearchBar(
                 query = searchQuery,
                 onQueryChange = { searchQuery = it },
-                onSearch = { performSearch() },
+                onSearch = { 
+                    performSearch()
+                },
                 active = false,
                 onActiveChange = {},
                 leadingIcon = {
