@@ -137,9 +137,8 @@ class ArxivRepository {
                         }
                         Log.d(TAG, "RSS feed failed: $errorMessage, falling back to regular API")
                         
-                        // Convert categories to arXiv search query format
-                        val searchQuery = categoryQuery.split("+")
-                            .joinToString(" OR ") { "cat:$it" }
+                        // Use the first category for the query
+                        val searchQuery = "cat:${categoryQuery.split("+").first()}"
                         Log.d(TAG, "Falling back to arXiv API with query: $searchQuery")
                         
                         api.searchPapers(

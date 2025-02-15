@@ -75,6 +75,9 @@ class ArxivApi {
         val formattedQuery = if (isTitleSearch) {
             // For title search, wrap the entire query in quotes
             "ti:\"${query.trim()}\""
+        } else if (query.startsWith("cat:")) {
+            // For category queries, use as is
+            query
         } else {
             // For general search, prefix each term with all: and join with +AND+
             query.trim()
@@ -87,7 +90,7 @@ class ArxivApi {
         return "$baseUrl?search_query=$formattedQuery" +
                "&start=$start" +
                "&max_results=$maxResults" +
-               "&sortBy=relevance" +
+               "&sortBy=submittedDate" +
                "&sortOrder=descending" +
                "&include_cross_list=true"
     }
