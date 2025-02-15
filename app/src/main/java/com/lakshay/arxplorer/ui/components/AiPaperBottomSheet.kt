@@ -52,16 +52,19 @@ fun AiPaperBottomSheet(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
+    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Prevent dismissal while loading
+    LaunchedEffect(chatState.isLoading) {
+        if (chatState.isLoading) {
+            bottomSheetState.expand()
+        }
+    }
 
     // Auto-scroll to bottom when new messages arrive or when thinking state changes
     LaunchedEffect(chatState.messages.size, chatState.messages.lastOrNull()?.isThinking) {
         if (chatState.messages.isNotEmpty()) {
-            coroutineScope.launch {
-                listState.scrollToItem(chatState.messages.size - 1)
-                // Additional small delay to ensure the scroll completes
-                kotlinx.coroutines.delay(100)
-                listState.animateScrollToItem(chatState.messages.size - 1)
-            }
+            listState.scrollToItem(chatState.messages.size - 1)
         }
     }
 
@@ -73,10 +76,10 @@ fun AiPaperBottomSheet(
     }
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(
-            skipPartiallyExpanded = true
-        ),
+        onDismissRequest = { 
+            if (!chatState.isLoading) onDismiss() 
+        },
+        sheetState = bottomSheetState,
         dragHandle = { 
             Surface(
                 modifier = Modifier
@@ -99,12 +102,14 @@ fun AiPaperBottomSheet(
             }
         },
         containerColor = colors.background,
-        windowInsets = WindowInsets(0),
+        windowInsets = WindowInsets(0, 0, 0, 0),
         shape = RoundedCornerShape(0.dp),
         modifier = Modifier.fillMaxSize()
     ) {
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
@@ -132,7 +137,7 @@ fun AiPaperBottomSheet(
                         )
                     }
                     IconButton(
-                        onClick = onDismiss,
+                        onClick = { if (!chatState.isLoading) onDismiss() },
                         modifier = Modifier
                             .clip(CircleShape)
                             .background(colors.surfaceVariant.copy(alpha = 0.3f))
