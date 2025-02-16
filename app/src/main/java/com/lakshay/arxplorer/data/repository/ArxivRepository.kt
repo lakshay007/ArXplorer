@@ -53,7 +53,49 @@ class ArxivRepository {
         "Probability" to "math.PR",
         "Statistics" to "math.ST",
         "Logic" to "math.LO",
-        "Combinatorics" to "math.CO"
+        "Combinatorics" to "math.CO",
+
+        // Economics
+        "Econometrics" to "econ.EM",
+        "General Economics" to "econ.GN",
+        "Theoretical Economics" to "econ.TH",
+
+        // Electrical Engineering and Systems Science
+        "Audio and Speech Processing" to "eess.AS",
+        "Image and Video Processing" to "eess.IV",
+        "Signal Processing" to "eess.SP",
+        "Systems and Control" to "eess.SY",
+
+        // Quantitative Biology
+        "Biomolecules" to "q-bio.BM",
+        "Cell Behavior" to "q-bio.CB",
+        "Genomics" to "q-bio.GN",
+        "Molecular Networks" to "q-bio.MN",
+        "Neurons and Cognition" to "q-bio.NC",
+        "Other Quantitative Biology" to "q-bio.OT",
+        "Populations and Evolution" to "q-bio.PE",
+        "Quantitative Methods" to "q-bio.QM",
+        "Subcellular Processes" to "q-bio.SC",
+        "Tissues and Organs" to "q-bio.TO",
+
+        // Statistics
+        "Applications" to "stat.AP",
+        "Computation" to "stat.CO",
+        "Methodology" to "stat.ME",
+        "Machine Learning" to "stat.ML",
+        "Other Statistics" to "stat.OT",
+        "Statistics Theory" to "stat.TH",
+
+        // Quantitative Finance
+        "Computational Finance" to "q-fin.CP",
+        "Economics" to "q-fin.EC",
+        "General Finance" to "q-fin.GN",
+        "Mathematical Finance" to "q-fin.MF",
+        "Portfolio Management" to "q-fin.PM",
+        "Pricing of Securities" to "q-fin.PR",
+        "Risk Management" to "q-fin.RM",
+        "Statistical Finance" to "q-fin.ST",
+        "Trading and Market Microstructure" to "q-fin.TR"
     )
 
     // Add a companion object to store the remaining papers

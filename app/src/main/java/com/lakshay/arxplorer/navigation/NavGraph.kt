@@ -12,6 +12,9 @@ import com.lakshay.arxplorer.ui.paper.PaperCommentsScreen
 import com.lakshay.arxplorer.ui.home.HomeScreen
 import com.lakshay.arxplorer.ui.home.HomeViewModel
 import com.lakshay.arxplorer.ui.paper.PaperCommentsViewModel
+import com.lakshay.arxplorer.ui.preferences.PreferencesScreen
+import com.lakshay.arxplorer.ui.preferences.PreferencesViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import javax.inject.Inject
 
 @Composable
@@ -54,6 +57,31 @@ fun NavGraph(
                 userPhotoUrl = currentUser?.photoUrl?.toString() ?: "",
                 onBackClick = { navController.popBackStack() },
                 viewModelFactory = viewModelFactory
+            )
+        }
+
+        // Preferences Screen
+        composable(
+            route = "preferences?isFirstTime={isFirstTime}",
+            arguments = listOf(
+                navArgument("isFirstTime") {
+                    type = NavType.BoolType
+                    defaultValue = true
+                }
+            )
+        ) { backStackEntry ->
+            val isFirstTime = backStackEntry.arguments?.getBoolean("isFirstTime") ?: true
+            val preferencesViewModel: PreferencesViewModel = hiltViewModel()
+            
+            PreferencesScreen(
+                onPreferencesSelected = { selectedPreferences ->
+                    preferencesViewModel.savePreferences(selectedPreferences) {
+                        homeViewModel.refreshPapers()
+                        navController.popBackStack()
+                    }
+                },
+                isFirstTime = isFirstTime,
+                onBackPressed = { navController.popBackStack() }
             )
         }
 

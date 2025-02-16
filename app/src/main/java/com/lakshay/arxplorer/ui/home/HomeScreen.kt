@@ -153,7 +153,11 @@ fun HomeScreen(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                                onClick = onPreferencesNeeded
+                                onClick = { 
+                                    navController.navigate("preferences?isFirstTime=false") {
+                                        launchSingleTop = true
+                                    }
+                                }
                             ),
                         contentAlignment = Alignment.Center
                     ) {
