@@ -87,12 +87,19 @@ class ArxivApi {
                 .joinToString("+AND+")
         }
             
-        return "$baseUrl?search_query=$formattedQuery" +
-               "&start=$start" +
-               "&max_results=$maxResults" +
-               "&sortBy=submittedDate" +
-               "&sortOrder=descending" +
-               "&include_cross_list=true"
+        val baseQuery = "$baseUrl?search_query=$formattedQuery" +
+                       "&start=$start" +
+                       "&max_results=$maxResults"
+
+        // Only add sorting parameters for non-title searches
+        return if (isTitleSearch) {
+            baseQuery
+        } else {
+            baseQuery +
+            "&sortBy=submittedDate" +
+            "&sortOrder=descending" +
+            "&include_cross_list=true"
+        }
     }
 
     private fun fetchAndParsePapers(urlString: String): List<ArxivPaper> {

@@ -2,6 +2,8 @@ package com.lakshay.arxplorer.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,10 +12,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,6 +41,7 @@ import com.lakshay.arxplorer.ui.theme.ThemeManager
 import com.lakshay.arxplorer.ui.theme.LocalAppColors
 import com.lakshay.arxplorer.ui.theme.ThemeViewModel
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,10 +140,35 @@ fun HomeScreen(
                         color = colors.primary
                     )
                 }
-                ThemeToggleButton(
-                    isDarkTheme = isDarkTheme,
-                    onToggle = { themeViewModel.toggleTheme() }
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Preferences/Interests button
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(colors.cardBackground.copy(alpha = 0.9f))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onPreferencesNeeded
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Tune,
+                            contentDescription = "Research Interests",
+                            tint = colors.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    ThemeToggleButton(
+                        isDarkTheme = isDarkTheme,
+                        onToggle = { themeViewModel.toggleTheme() }
+                    )
+                }
             }
             
             // Search bar with sort button
@@ -239,7 +267,12 @@ fun HomeScreen(
                             )
                             sortByOptions.forEach { (label, value) ->
                                 DropdownMenuItem(
-                                    text = { Text(label) },
+                                    text = { 
+                                        Text(
+                                            text = label,
+                                            color = if (selectedSortBy == value) colors.primary else colors.textPrimary
+                                        ) 
+                                    },
                                     onClick = {
                                         selectedSortBy = value
                                         showSortOptions = false
@@ -249,7 +282,7 @@ fun HomeScreen(
                                         textColor = colors.primary
                                     ),
                                     modifier = Modifier.background(
-                                        if (selectedSortBy == value) colors.cardBackground else Color.Transparent
+                                        if (selectedSortBy == value) colors.primary.copy(alpha = 0.1f) else Color.Transparent
                                     )
                                 )
                             }
@@ -267,7 +300,12 @@ fun HomeScreen(
                             )
                             sortOrderOptions.forEach { (label, value) ->
                                 DropdownMenuItem(
-                                    text = { Text(label) },
+                                    text = { 
+                                        Text(
+                                            text = label,
+                                            color = if (selectedSortOrder == value) colors.primary else colors.textPrimary
+                                        ) 
+                                    },
                                     onClick = {
                                         selectedSortOrder = value
                                         showSortOptions = false
@@ -277,7 +315,7 @@ fun HomeScreen(
                                         textColor = colors.primary
                                     ),
                                     modifier = Modifier.background(
-                                        if (selectedSortOrder == value) colors.cardBackground else Color.Transparent
+                                        if (selectedSortOrder == value) colors.primary.copy(alpha = 0.1f) else Color.Transparent
                                     )
                                 )
                             }
@@ -426,11 +464,24 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "No papers found",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = colors.secondary.copy(alpha = 0.6f)
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(horizontal = 32.dp)
+                        ) {
+                            Text(
+                                text = "No papers found",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = colors.textPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Try adjusting your search filters or using different keywords",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
                 is UiState.Success -> {
@@ -520,11 +571,35 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = state.message,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Color.Red
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(horizontal = 32.dp)
+                        ) {
+                            Text(
+                                text = "Oops! Something went wrong",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = colors.textPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Please try refreshing or adjusting your search",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                                textAlign = TextAlign.Center
+                            )
+                            if (state.message.contains("mark/reset")) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { homeViewModel.refreshPapers() },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = colors.primary
+                                    )
+                                ) {
+                                    Text("Refresh")
+                                }
+                            }
+                        }
                     }
                 }
             }
