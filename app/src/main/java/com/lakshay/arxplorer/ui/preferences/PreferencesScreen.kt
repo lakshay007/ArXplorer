@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.FlowRow
@@ -241,7 +242,9 @@ fun PreferencesScreen(
                                     border = null
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        modifier = Modifier
+                                            .padding(horizontal = 16.dp)
+                                            .widthIn(max = 280.dp),  // Maximum width for category chips
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -256,7 +259,9 @@ fun PreferencesScreen(
                                         Text(
                                             text = category.name,
                                             color = if (isSelected) selectedChipTextColor else textColor,
-                                            style = MaterialTheme.typography.bodyLarge
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
                                 }
@@ -301,7 +306,9 @@ fun PreferencesScreen(
                                                 border = null
                                             ) {
                                                 Row(
-                                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                                    modifier = Modifier
+                                                        .padding(horizontal = 16.dp)
+                                                        .widthIn(max = 240.dp),  // Maximum width for subcategory chips
                                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
@@ -316,7 +323,9 @@ fun PreferencesScreen(
                                                     Text(
                                                         text = subcategory,
                                                         color = if (isSelected) selectedChipTextColor else textColor,
-                                                        style = MaterialTheme.typography.bodyLarge
+                                                        style = MaterialTheme.typography.bodyLarge,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
                                                     )
                                                 }
                                             }
