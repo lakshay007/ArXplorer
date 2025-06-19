@@ -333,7 +333,8 @@ fun CommentItem(
                 modifier = Modifier
                     .padding(start = 32.dp, top = 4.dp)
                     .fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 // Voting buttons
                 Row(
@@ -412,14 +413,20 @@ fun CommentItem(
                 }
 
                 if (showReplyButton) {
-                    TextButton(
-                        onClick = { showReplyInput = !showReplyInput },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = colors.primary
-                        ),
-                        contentPadding = PaddingValues(0.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.height(32.dp)
                     ) {
-                        Text("Reply", style = MaterialTheme.typography.bodyMedium)
+                        TextButton(
+                            onClick = { showReplyInput = !showReplyInput },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = colors.primary
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                            modifier = Modifier.height(IntrinsicSize.Min)
+                        ) {
+                            Text("Reply", style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                 }
             }

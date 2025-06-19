@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.ui.text.style.TextAlign
+import androidx.activity.compose.BackHandler
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -41,6 +42,13 @@ fun PreferencesScreen(
     isFirstTime: Boolean = false,
     onBackPressed: () -> Unit = {}
 ) {
+    // Handle back button press only if not first time
+    if (!isFirstTime) {
+        BackHandler {
+            onBackPressed()
+        }
+    }
+
     var selectedCategory by remember { mutableStateOf<Category?>(null) }
     val selectedPreferences = remember { mutableStateListOf<String>() }
     var searchQuery by remember { mutableStateOf("") }
@@ -109,40 +117,10 @@ fun PreferencesScreen(
         color = backgroundColor
     ) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()  // Add padding for status bar/notch
         ) {
-            // Top App Bar with conditional back button
-            if (!isFirstTime) {
-                TopAppBar(
-                    title = { 
-                        Text(
-                            "Edit Topics", 
-                            color = topBarTextColor,
-                            fontSize = 18.sp  // Smaller text size
-                        ) 
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = onBackPressed,
-                            modifier = Modifier.size(40.dp)  // Smaller icon button
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Back",
-                                tint = topBarIconColor,
-                                modifier = Modifier.size(20.dp)  // Smaller icon
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = backgroundColor,
-                        navigationIconContentColor = topBarIconColor,
-                        titleContentColor = topBarTextColor
-                    ),
-                    modifier = Modifier.height(48.dp)  // Reduced height
-                )
-            }
-
             if (isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -155,8 +133,8 @@ fun PreferencesScreen(
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 24.dp)  // Changed to only horizontal padding
-                        .padding(top = 8.dp)  // Added small top padding
+                        .padding(horizontal = 24.dp)
+                        .padding(top = 24.dp)  // Keep existing top padding for content spacing
                 ) {
                     item {
                         // Header

@@ -12,6 +12,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
@@ -45,6 +47,7 @@ fun PaperScreen(
     viewModel: PaperViewModel = hiltViewModel()
 ) {
     val paper by viewModel.currentPaper.collectAsState()
+    val isBookmarked by viewModel.isBookmarked.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(true) }
@@ -220,19 +223,30 @@ fun PaperScreen(
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            IconButton(onClick = { onDownloadClick(currentPaper.pdfUrl) }) {
+                            IconButton(onClick = { viewModel.toggleBookmark() }) {
                                 Icon(
-                                    Icons.Default.Download,
-                                    contentDescription = "Download PDF",
+                                    imageVector = if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                    contentDescription = if (isBookmarked) "Remove Bookmark" else "Add Bookmark",
                                     tint = Color.White
                                 )
                             }
-                            IconButton(onClick = { onShareClick(currentPaper) }) {
-                                Icon(
-                                    Icons.Default.Share,
-                                    contentDescription = "Share",
-                                    tint = Color.White
-                                )
+                            currentPaper?.pdfUrl?.let { url ->
+                                IconButton(onClick = { onDownloadClick(url) }) {
+                                    Icon(
+                                        Icons.Default.Download,
+                                        contentDescription = "Download PDF",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                            currentPaper?.let { paper ->
+                                IconButton(onClick = { onShareClick(paper) }) {
+                                    Icon(
+                                        Icons.Default.Share,
+                                        contentDescription = "Share",
+                                        tint = Color.White
+                                    )
+                                }
                             }
                         }
                     }

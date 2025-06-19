@@ -8,6 +8,7 @@ import com.lakshay.arxplorer.data.model.ArxivPaper
 import com.lakshay.arxplorer.data.network.CommentApi
 import com.lakshay.arxplorer.data.network.CommentCountRequest
 import com.lakshay.arxplorer.data.repository.ArxivRepository
+import com.lakshay.arxplorer.data.repository.BookmarkRepository
 import com.lakshay.arxplorer.data.repository.TimePeriod
 import com.lakshay.arxplorer.ui.common.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +24,7 @@ private const val TAG = "HomeViewModel"
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val arxivRepository: ArxivRepository,
+    private val bookmarkRepository: BookmarkRepository,
     private val commentApi: CommentApi
 ) : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
@@ -43,6 +45,22 @@ class HomeViewModel @Inject constructor(
     val commentCounts: StateFlow<Map<String, Int>> = _commentCounts.asStateFlow()
 
     private var currentMode = "new"  // Track current mode
+
+    private val _bookmarkedPaperIds = MutableStateFlow<Set<String>>(emptySet())
+    val bookmarkedPaperIds: StateFlow<Set<String>> = _bookmarkedPaperIds
+
+    private val _currentPaper = MutableStateFlow<ArxivPaper?>(null)
+    val currentPaper: StateFlow<ArxivPaper?> = _currentPaper.asStateFlow()
+
+    init {
+        // Load bookmarked paper IDs
+        viewModelScope.launch {
+            bookmarkRepository.loadBookmarkedPaperIds()
+            bookmarkRepository.getBookmarkedPaperIds().collect { paperIds ->
+                _bookmarkedPaperIds.value = paperIds
+            }
+        }
+    }
 
     fun initializeData() {
         viewModelScope.launch {
@@ -156,15 +174,28 @@ class HomeViewModel @Inject constructor(
     private fun loadCommentCounts(papers: List<ArxivPaper>) {
         viewModelScope.launch {
             try {
-                val paperIds = papers.map { it.id.substringAfterLast('/').split("v")[0] }
+                // Use the full paper ID including the version suffix instead of splitting it
+                val paperIds = papers.map { it.id.substringAfterLast('/') }
                 val response = commentApi.getCommentCounts(CommentCountRequest(paperIds))
                 
                 if (response.isSuccessful) {
-                    response.body()?.let { newCounts ->
-                        // Merge the maps properly
-                        _commentCounts.value = _commentCounts.value.toMutableMap().apply {
-                            putAll(newCounts)
+                    response.body()?.let { apiCounts ->
+                        // Create a mapping from full paper IDs to counts
+                        val countsWithFullIds = papers.associate { paper ->
+                            val shortId = paper.id.substringAfterLast('/') 
+                            paper.id to (apiCounts[shortId] ?: 0)
                         }
+                        
+                        // Update the comment counts with the full paper IDs as keys
+                        _commentCounts.value = _commentCounts.value.toMutableMap().apply {
+                            putAll(countsWithFullIds)
+                        }
+                        
+                        // Log for debugging
+                        Log.d(TAG, "Paper IDs sent to API: $paperIds")
+                        Log.d(TAG, "API response counts: $apiCounts")
+                        Log.d(TAG, "Mapped to full IDs: $countsWithFullIds")
+                        Log.d(TAG, "Updated comment counts: ${_commentCounts.value}")
                     }
                 }
             } catch (e: Exception) {
@@ -261,5 +292,23 @@ class HomeViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    fun toggleBookmark(paperId: String) {
+        viewModelScope.launch {
+            if (_bookmarkedPaperIds.value.contains(paperId)) {
+                bookmarkRepository.removeBookmark(paperId)
+            } else {
+                bookmarkRepository.addBookmark(paperId)
+            }
+        }
+    }
+
+    fun isBookmarked(paperId: String): Boolean {
+        return _bookmarkedPaperIds.value.contains(paperId)
+    }
+
+    fun setCurrentPaper(paper: ArxivPaper) {
+        _currentPaper.value = paper
     }
 } 

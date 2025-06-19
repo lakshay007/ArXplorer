@@ -4,7 +4,9 @@ import android.app.Application
 import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.lakshay.arxplorer.data.model.ArxivPaper
+import com.lakshay.arxplorer.data.repository.BookmarkRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,12 +14,38 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class PaperViewModel @Inject constructor(application: Application) : AndroidViewModel(application) {
+class PaperViewModel @Inject constructor(
+    application: Application,
+    private val bookmarkRepository: BookmarkRepository
+) : AndroidViewModel(application) {
     private val _currentPaper = MutableStateFlow<ArxivPaper?>(null)
     val currentPaper: StateFlow<ArxivPaper?> = _currentPaper
+    
+    private val _isBookmarked = MutableStateFlow(false)
+    val isBookmarked: StateFlow<Boolean> = _isBookmarked
 
     fun setPaper(paper: ArxivPaper?) {
         _currentPaper.value = paper
+        paper?.let { checkIfBookmarked(it.id) }
+    }
+    
+    private fun checkIfBookmarked(paperId: String) {
+        viewModelScope.launch {
+            _isBookmarked.value = bookmarkRepository.isBookmarked(paperId)
+        }
+    }
+    
+    fun toggleBookmark() {
+        val paper = _currentPaper.value ?: return
+        viewModelScope.launch {
+            if (_isBookmarked.value) {
+                bookmarkRepository.removeBookmark(paper.id)
+                _isBookmarked.value = false
+            } else {
+                bookmarkRepository.addBookmark(paper.id)
+                _isBookmarked.value = true
+            }
+        }
     }
 
     fun downloadPdf(pdfUrl: String) {

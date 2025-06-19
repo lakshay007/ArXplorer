@@ -14,6 +14,7 @@ import com.lakshay.arxplorer.ui.home.HomeViewModel
 import com.lakshay.arxplorer.ui.paper.PaperCommentsViewModel
 import com.lakshay.arxplorer.ui.preferences.PreferencesScreen
 import com.lakshay.arxplorer.ui.preferences.PreferencesViewModel
+import com.lakshay.arxplorer.ui.bookmarks.BookmarksScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import javax.inject.Inject
 
@@ -82,6 +83,34 @@ fun NavGraph(
                 },
                 isFirstTime = isFirstTime,
                 onBackPressed = { navController.popBackStack() }
+            )
+        }
+        
+        // Bookmarks Screen
+        composable(route = "bookmarks") {
+            BookmarksScreen(
+                onBackClick = { navController.popBackStack() },
+                onPaperClick = onPaperClick,
+                onCommentClick = { paper -> 
+                    navController.navigate("paper/${paper.id}/comments")
+                }
+            )
+        }
+        
+        // Paper Comments Screen - adding the new route format
+        composable(
+            route = "paper/{paperId}/comments",
+            arguments = listOf(
+                navArgument("paperId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val paperId = backStackEntry.arguments?.getString("paperId") ?: return@composable
+            PaperCommentsScreen(
+                paperId = paperId,
+                currentUserId = currentUser?.uid ?: "",
+                userPhotoUrl = currentUser?.photoUrl?.toString() ?: "",
+                onBackClick = { navController.popBackStack() },
+                viewModelFactory = viewModelFactory
             )
         }
 

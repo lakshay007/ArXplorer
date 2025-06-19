@@ -12,6 +12,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.lakshay.arxplorer.ui.auth.AuthState
 import com.lakshay.arxplorer.ui.auth.AuthViewModel
@@ -62,6 +63,9 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Enable edge-to-edge display
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Add back press handler
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {

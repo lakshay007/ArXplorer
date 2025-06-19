@@ -51,7 +51,7 @@ class GeminiService {
             val responseBody = response.body?.string() ?: throw IOException("Empty response body")
             Log.d(TAG, "Raw response: $responseBody")
             
-            // Parse the JSON response to get the 'response' field
+
             val jsonResponse = JSONObject(responseBody)
             jsonResponse.getString("response")
 
@@ -67,7 +67,7 @@ class GeminiService {
             Log.d(TAG, "User input: $userInput")
             Log.d(TAG, "PDF URL: ${paper.pdfUrl}")
 
-            // Emit thinking message
+
             emit("ArXAI is thinking...")
 
             val prompt = buildString {

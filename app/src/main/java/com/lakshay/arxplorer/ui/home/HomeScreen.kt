@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -67,6 +68,7 @@ fun HomeScreen(
     val isRefreshing by homeViewModel.isRefreshing.collectAsState()
     val commentCounts by homeViewModel.commentCounts.collectAsState()
     val keyboardController = LocalSoftwareKeyboardController.current
+    val bookmarkedPaperIds by homeViewModel.bookmarkedPaperIds.collectAsState()
 
     val sortByOptions = listOf(
         "All" to "all",
@@ -144,6 +146,31 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Bookmarks button
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(colors.cardBackground.copy(alpha = 0.9f))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { 
+                                    navController.navigate("bookmarks") {
+                                        launchSingleTop = true
+                                    }
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bookmark,
+                            contentDescription = "Bookmarks",
+                            tint = colors.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    
                     // Preferences/Interests button
                     Box(
                         modifier = Modifier
@@ -168,6 +195,7 @@ fun HomeScreen(
                             modifier = Modifier.size(22.dp)
                         )
                     }
+                    
                     ThemeToggleButton(
                         isDarkTheme = isDarkTheme,
                         onToggle = { themeViewModel.toggleTheme() }
@@ -389,7 +417,7 @@ fun HomeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Top published papers")
+                                Text("Top cited papers")
                                 Icon(
                                     imageVector = Icons.Default.ArrowDropDown,
                                     contentDescription = "Show time periods",
@@ -510,15 +538,19 @@ fun HomeScreen(
                                 items = state.data,
                                 key = { paper -> paper.id }  // Add key for stable item identity
                             ) { paper ->
+                                val isBookmarked = bookmarkedPaperIds.contains(paper.id)
+                                val commentCount = commentCounts[paper.id] ?: 0
+                                
                                 PaperCard(
                                     paper = paper,
                                     onClick = { onPaperClick(paper) },
                                     onCommentClick = { 
-                                        val baseId = paper.id.substringAfterLast('/').split("v")[0]
-                                        navController.navigate("comments/$baseId") 
+                                        homeViewModel.setCurrentPaper(paper)
+                                        navController.navigate("paper/${paper.id}/comments")
                                     },
-                                    commentCount = commentCounts[paper.id.substringAfterLast('/').split("v")[0]] ?: 0,
-                                    modifier = Modifier.fillMaxWidth()
+                                    commentCount = commentCount,
+                                    isBookmarked = isBookmarked,
+                                    onBookmarkClick = { homeViewModel.toggleBookmark(paper.id) }
                                 )
                             }
 

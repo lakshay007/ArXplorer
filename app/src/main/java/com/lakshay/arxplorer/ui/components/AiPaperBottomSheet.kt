@@ -112,7 +112,9 @@ fun AiPaperBottomSheet(
                 .imePadding()
         ) {
             Column(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
             ) {
                 // Header
                 Row(

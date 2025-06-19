@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.filled.Comment
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,8 +42,10 @@ import java.util.concurrent.TimeUnit
 fun PaperCard(
     paper: ArxivPaper,
     onClick: () -> Unit,
-    onCommentClick: () -> Unit,
+    onCommentClick: () -> Unit = {},
     commentCount: Int = 0,
+    isBookmarked: Boolean = false,
+    onBookmarkClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val colors = LocalAppColors.current
@@ -198,17 +202,18 @@ fun PaperCard(
                 ) {
                     Text(
                         text = paper.primaryCategory,
-                        color = colors.primary,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        color = colors.primary
                     )
                 }
-
-                // Date with subtle color
+                
+                // Date text
                 Text(
                     text = paper.publishedDate.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textSecondary.copy(alpha = 0.7f)
+                    fontSize = 12.sp,
+                    color = colors.textSecondary
                 )
             }
 
@@ -243,50 +248,84 @@ fun PaperCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Action buttons with minimal design
+            // Bottom row with comment count and AI buttons
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Ask AI button
-                TextButton(
-                    onClick = { handleAiFeatureClick(true) },
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = colors.primary.copy(alpha = 0.8f)
-                    )
+                // Comment button
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "Ask AI about this",
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                    Row(
+                        modifier = Modifier
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onCommentClick
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Comment,
+                            contentDescription = "Comments",
+                            tint = colors.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = commentCount.toString(),
+                            fontSize = 14.sp,
+                            color = colors.textSecondary
+                        )
+                    }
+                    
+                    // Bookmark button - fixed alignment by replacing IconButton with Icon in a clickable box
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onBookmarkClick
+                            )
+                            .padding(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            contentDescription = if (isBookmarked) "Remove Bookmark" else "Add Bookmark",
+                            tint = colors.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
-
-                // Comments button
-                TextButton(
-                    onClick = onCommentClick,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = colors.primary.copy(alpha = 0.8f)
-                    )
+                
+                // AI action buttons
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Comment,
-                        contentDescription = "Comments",
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = commentCount.toString(),
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                    // Ask AI button
+                    TextButton(
+                        onClick = { handleAiFeatureClick(true) },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = colors.primary.copy(alpha = 0.8f)
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Ask AI about this",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
                 }
             }
         }

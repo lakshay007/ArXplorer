@@ -18,7 +18,6 @@ class CommentRepository @Inject constructor(
         val response = commentApi.getComments(paperId, "Bearer $token")
         if (response.isSuccessful) {
             response.body()?.let { comments ->
-                // Convert all comments to UI models, preserving the nested structure
                 val rootComments = comments.map { it.toUiModel() }
                 emit(rootComments)
             }
